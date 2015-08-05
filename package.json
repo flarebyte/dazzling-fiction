@@ -1,0 +1,46 @@
+{
+  "name": "dazzling-fiction",
+  "version": "0.0.0",
+  "description": "Fictional facts generator based on a given input",
+  "homepage": "https://github.com/flarebyte/dazzling-fiction",
+  "author": {
+    "name": "Olivier Huin",
+    "email": "npm.olivier.huin@flarebyte.com"
+  },
+  "repository": "flarebyte/dazzling-fiction",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "cli.js"
+  ],
+  "keywords": [
+    "dazzling-fiction",
+    "random",
+    "facts",
+    "datalog"
+  ],
+  "dependencies": {
+    "dazzling-chance": "^0.1.0",
+    "joi": "^6.6.1",
+    "lodash": "^3.10.1",
+    "meow": "^2.0.0"
+  },
+  "devDependencies": {
+    "chai": "^3.2.0",
+    "grunt-bump": "^0.3.1",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-contrib-nodeunit": "^0.4.1",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-mocha-cli": "^1.11.0",
+    "jshint-stylish": "^1.0.0",
+    "load-grunt-tasks": "^1.0.0",
+    "time-grunt": "^1.0.0"
+  },
+  "scripts": {
+    "test": "grunt"
+  },
+  "bin": {
+    "dazzling-fiction": "cli.js"
+  }
+}
