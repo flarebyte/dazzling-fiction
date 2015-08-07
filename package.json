@@ -20,10 +20,13 @@
     "datalog"
   ],
   "dependencies": {
+    "commander": "^2.8.1",
     "dazzling-chance": "^0.1.0",
     "joi": "^6.6.1",
     "lodash": "^3.10.1",
-    "meow": "^2.0.0"
+    "marked": "^0.3.5",
+    "meow": "^2.0.0",
+    "string": "^3.3.1"
   },
   "devDependencies": {
     "chai": "^3.2.0",
