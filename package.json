@@ -20,6 +20,7 @@
     "datalog"
   ],
   "dependencies": {
+    "bluebird": "^2.9.34",
     "commander": "^2.8.1",
     "dazzling-chance": "^0.1.0",
     "joi": "^6.6.1",
