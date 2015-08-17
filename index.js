@@ -32,27 +32,49 @@ var isFrequencyWord = function(value) {
 
 var checkListType = function(list) {
     var first = _.first(list);
-    var isNumber = /[0-9.]+/.test(first) && S(first).count('.')<=1;
-    return isNumber ? 'number': 'string';
+    var isNumber = /[0-9.]+/.test(first) && S(first).count('.') <= 1;
+    return isNumber ? 'number' : 'string';
 };
 
 var checkMinMaxType = function(min) {
     var isInt = S(min).isNumeric();
-    return isInt ? 'int': 'float';
+    return isInt ? 'int' : 'float';
 };
 
-var extractList = function(value) {
-    if (S(value).count('*') < 2) {
-        return [];
+var extractBetween = function(value, from, to) {
+    var hasFrom = S(value).contains(from) || S(from).length === 0;
+    var hasTo = S(value).contains(to) || S(to).length === 0;
+    if (!(hasFrom&&hasTo)) {
+        return {
+            found: false,
+            remain: value,
+            extracted: []
+        };
     }
-    return S(value).between('*', '*').parseCSV();
-};
+     var extracted= S(value).between(from, to);
+     var remain = S(value).replaceAll(from+extracted.s+to,'').s;
+     return {
+            found:true,
+            remain: remain,
+            extracted: extracted
+        };
 
-var extractRef = function(value) {
-    if (S(value).count('`') < 2) {
-        return [];
+
+};
+var extractRefs = function(value) {
+    var ref = extractBetween(value,'`','`');
+    var r = ref;
+    var extracted = [];
+    while (ref.found) {
+        extracted.push(ref.extracted.slugify().s);
+        r = {
+           found: true, 
+           remain: ref.remain,
+           extracted: extracted
+        };
+         ref = extractBetween(ref.remain,'`','`');
     }
-    return S(value).between('`', '`').slugify().s;
+    return r;
 };
 
 var extractMinMax = function(value) {
@@ -69,10 +91,10 @@ var extractQuantity = function(value) {
         return {};
     }
     var qtyPart = S(value).between('', ' of ').s;
-    var hasRef = extractRef(qtyPart);
-    if (!_.isEmpty(hasRef)) {
+    var refs = extractRefs(qtyPart);
+    if (refs.found) {
         return {
-            ref: hasRef
+            refs: refs.extracted
         };
     }
     var hasMinMax = extractMinMax(qtyPart);
@@ -105,43 +127,43 @@ var parseAttributeItem = function(value) {
         raw: value
 
     };
-    var list = extractList(remain);
-
-    if (!_.isEmpty(list)) {
+    var list= extractBetween(remain,'*','*');
+    if (list.found) {
+        var csvList = list.extracted.parseCSV();
         r.value = {
-            type: checkListType(list),
-            list: list
+            type: checkListType(csvList),
+            list: csvList
         };
-        remain = S(remain).between('', '*').s;
+        remain = list.remain;
     }
-
     var quantity = extractQuantity(remain);
     if (!_.isEmpty(quantity)) {
         r.quantity = quantity;
-        remain = S(remain).between('', ' of ').s;
+        remain = S(remain).between(' of ').s;
     }
-
     var yesNo = extractBoolean(remain);
     if (yesNo) {
-       r.value = {
+        r.value = {
             type: 'bool'
         };
-        remain= remain.replace(YES_NO,'');
+        remain = S(remain).replaceAll(YES_NO, '').s;
     }
-
+    var ref = extractBetween(remain,'`','`');
+    if (ref.found) {
+        r.value = {
+           ref: ref.extracted.slugify().s
+        };
+        remain = ref.remain;
+    }
     var minMax = extractMinMax(remain);
     if (!_.isEmpty(minMax)) {
-         r.value = {
+        r.value = {
             type: checkMinMaxType(list),
             min: minMax[0],
             max: minMax[1]
         };
-        //todo remain
     }
 
-    //todo: 1 to 3 of list
-    // reference
-    
     return r;
 };
 

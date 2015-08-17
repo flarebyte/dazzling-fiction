@@ -45,7 +45,7 @@
 
 ### Meal
 
-* **starter** often; popular `habit` of *tomatoes mozarella,snails, soup,salad,caviar, foie gras*
+* **starter** often; `popular` `habit` of *tomatoes mozarella,snails, soup,salad,caviar, foie gras*
 * **main meat** always; `meat`
 * **main vegetable** always; `vegetable`
 * **dessert** often; 1 to 2 of `dessert`
