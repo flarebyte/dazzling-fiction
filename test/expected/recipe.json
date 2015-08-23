@@ -1,0 +1,372 @@
+{
+  "title": "Recipe",
+  "imports": [
+    "basic",
+    "side-basic",
+    "second-basic"
+  ],
+  "weighting": {
+    "experimental": [
+      "1",
+      "2",
+      "4",
+      "8",
+      "16"
+    ]
+  },
+  "frequency": {
+    "Always": "6",
+    "Usually": "5",
+    "Often": "4",
+    "Sometimes": "3",
+    "Occasionally": "2",
+    "Rarely": "1",
+    "Never": "0"
+  },
+  "models": {
+    "sauce": {
+      "olive-oil": {
+        "frequency": "sometimes",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "float",
+              "min": 1,
+              "max": 10
+            },
+            "raw": "1.0 to 10 "
+          },
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "teaspoon",
+                "tablespoon"
+              ]
+            },
+            "raw": "*teaspoon,tablespoon*"
+          }
+        ]
+      },
+      "pepper": {
+        "frequency": "occasionally",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "float",
+              "min": 1,
+              "max": 3
+            },
+            "raw": "1 to 3"
+          },
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "teaspoon"
+              ]
+            },
+            "raw": "*teaspoon*"
+          }
+        ]
+      },
+      "diced-onion": {
+        "frequency": "often",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "number",
+              "list": [
+                1,
+                2,
+                5
+              ]
+            },
+            "raw": "*1,2,5*"
+          }
+        ]
+      },
+      "spice:Garlic/wild": {
+        "frequency": "sometimes",
+        "values": []
+      },
+      "spice:Garlic/black": {
+        "frequency": "sometimes",
+        "values": []
+      },
+      "chilli": {
+        "frequency": "always",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "bool"
+            },
+            "raw": "yes/no "
+          }
+        ]
+      },
+      "secret": {
+        "frequency": "usually",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "ref": "secret"
+            },
+            "raw": "`Secret`"
+          }
+        ]
+      }
+    },
+    "meat": {
+      "meat-type": {
+        "frequency": "always",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "pork",
+                "beef",
+                "chicken"
+              ]
+            },
+            "raw": "*pork,beef,chicken*"
+          }
+        ]
+      },
+      "sauce": {
+        "frequency": "usually",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "ref": "sauce"
+            },
+            "raw": "`sauce`"
+          }
+        ]
+      }
+    },
+    "vegetable": {
+      "vegetable-mix": {
+        "frequency": "always",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 3
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "carrot",
+                "salad",
+                "turnip",
+                "potato",
+                "cucumber",
+                "bean"
+              ]
+            },
+            "raw": "1 to 3 of *carrot,salad,turnip,potato,cucumber,bean*"
+          }
+        ]
+      },
+      "sauce": {
+        "frequency": "often",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "ref": "sauce"
+            },
+            "raw": "`sauce`"
+          }
+        ]
+      }
+    },
+    "dessert": {
+      "topping": {
+        "frequency": "often",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "chocolotate",
+                "caramel",
+                "strawberry"
+              ]
+            },
+            "raw": "*chocolotate, caramel, strawberry*"
+          }
+        ]
+      }
+    },
+    "meal": {
+      "starter": {
+        "frequency": "often",
+        "values": [
+          {
+            "quantity": {
+              "refs": [
+                "popular",
+                "habit"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "list": [
+                "tomatoes mozarella",
+                "snails",
+                "soup",
+                "salad",
+                "caviar",
+                "foie gras"
+              ]
+            },
+            "raw": "`popular` `habit` of *tomatoes mozarella,snails, soup,salad,caviar, foie gras*"
+          }
+        ]
+      },
+      "main-meat": {
+        "frequency": "always",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "ref": "meat"
+            },
+            "raw": "`meat`"
+          }
+        ]
+      },
+      "main-vegetable": {
+        "frequency": "always",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 1
+            },
+            "value": {
+              "ref": "vegetable"
+            },
+            "raw": "`vegetable`"
+          }
+        ]
+      },
+      "dessert": {
+        "frequency": "often",
+        "values": [
+          {
+            "quantity": {
+              "type": "int",
+              "min": 1,
+              "max": 2
+            },
+            "value": {
+              "ref": "dessert"
+            },
+            "raw": "1 to 2 of `dessert`"
+          }
+        ]
+      }
+    }
+  },
+  "refs": {
+    "secret": {
+      "quantity": {
+        "type": "int",
+        "min": 2,
+        "max": 2
+      },
+      "value": {
+        "ref": "secret-spice"
+      },
+      "raw": " 2 of `Secret spice`"
+    },
+    "week-meal": {
+      "quantity": {
+        "type": "int",
+        "min": 7,
+        "max": 7
+      },
+      "value": {
+        "ref": "meal"
+      },
+      "raw": " 7 of `meal`"
+    },
+    "habit": {
+      "quantity": {
+        "type": "int",
+        "min": 1,
+        "max": 1
+      },
+      "value": {
+        "type": "float",
+        "min": 1,
+        "max": 3
+      },
+      "raw": " 1 to 3"
+    }
+  }
+}
