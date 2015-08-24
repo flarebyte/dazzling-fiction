@@ -23,10 +23,11 @@
 ### Sauce
 
 * **Olive Oil** sometimes ;1.0 to 10 ; *teaspoon,tablespoon*
-* **Pepper** occasionally ; 1 to 3; *teaspoon*
+* **Pepper ** occasionally ; 1 to 3; *teaspoon*
 * **Diced onion** often ; *1,2,5*
-* **Garlic** sometimes
-* **Chilli** yes/no 
+* **spice:Garlic/wild ** sometimes
+* **spice:Garlic/black ** sometimes
+* ** Chilli** yes/no 
 * **secret** usually; `Secret`
 
 ### Meat
