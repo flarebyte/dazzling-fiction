@@ -10,6 +10,8 @@ var othello = fs.readFileSync('test/fixtures/othello.txt').toString();
 
 var jsonRecipe = fs.readJsonSync('test/expected/recipe.json');
 var jsonFamily = fs.readJsonSync('test/expected/family.json');
+var jsonMergeRecipe = fs.readJsonSync('test/expected/merge-recipe.json');
+var jsonMergeFamily = fs.readJsonSync('test/expected/merge-family.json');
 
 describe('dazzling-fiction node module', function() {
     it('must read imports from script', function(done) {
@@ -49,7 +51,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'recipe'
         });
-        fiction.parseScript({
+        fiction._parseScript({
             text: othello
         }).then(function(results) {
             assert.lengthOf(results, 5);
@@ -77,7 +79,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'family'
         });
-        fiction.parseScript({
+        fiction._parseScript({
             text: othello
         }).then(function(results) {
             assert.lengthOf(results, 1);
@@ -92,6 +94,55 @@ describe('dazzling-fiction node module', function() {
 
     });
 
+    it('must parse and merge the recipe script', function(done) {
+        var fiction = dazzlingFiction({
+            scriptFolder: "test/fixtures/",
+            script: 'recipe'
+        });
+        fiction._parseAndMergeScript({
+            text: othello
+        }).then(function(results) {
+            assert.deepEqual(results.weighting.experimental, ['1', '2', '4', '8', '16']);
+            assert.deepEqual(results.weighting.popular, ['1', '2', '3', '5', '8', '13', '21', '20', '13', '8', '5', '3', '3', '1']);
+            assert.deepEqual(results.weighting.fibo, ['1', '2', '3', '5', '8', '13']);
+            assert.deepEqual(results.weighting.side, ['1', '2', '9', '5', '8', '13']);
+            assert.deepEqual(results.weighting.second, ['2', '2', '2', '5', '8', '13']);
+            assert.deepEqual(results.frequency, {
+                "Always": "6",
+                "Usually": "5",
+                "Often": "4",
+                "Sometimes": "3",
+                "Occasionally": "2",
+                "Rarely": "1",
+                "Never": "0"
+            });
+            //fs.writeJsonSync('test/expected/merge-recipe.json', results);
+            assert.deepEqual(results, jsonMergeRecipe);
+        }).then(function() {
+            done();
+        }).catch(function(e) {
+            done(e);
+        });
 
+    });
+
+    it('must parse and merge the family script', function(done) {
+        var fiction = dazzlingFiction({
+            scriptFolder: "test/fixtures/",
+            script: 'family'
+        });
+        fiction._parseAndMergeScript({
+            text: othello
+        }).then(function(results) {
+            //fs.writeJsonSync('test/expected/merge-family.json', results);
+            assert.deepEqual(results, jsonMergeFamily);
+            assert.deepEqual(results, jsonFamily);
+        }).then(function() {
+            done();
+        }).catch(function(e) {
+            done(e);
+        });
+
+    });
 
 });

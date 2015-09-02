@@ -194,6 +194,11 @@ var parseAttributeItem = function(value) {
     return r;
 };
 
+var parseUnions = function(value) {
+    var refs = extractRefs(value);
+    return refs.found ? refs.extracted : [];
+};
+
 var extractModelAttribute = function(value) {
     var attrValue = extractValue(value).parseCSV(';');
     Joi.assert(attrValue, Joi.array().min(1));
@@ -206,6 +211,7 @@ var extractModelAttribute = function(value) {
 
 };
 
+
 var md2obj = function(tokens) {
     var r = {
         title: "",
@@ -213,6 +219,7 @@ var md2obj = function(tokens) {
         weighting: {},
         frequency: {},
         models: {},
+        unions: {},
         refs: {}
     };
     var length = tokens.length;
@@ -250,10 +257,16 @@ var md2obj = function(tokens) {
             if (isRefs) {
                 r.refs[asName(extractKey(token.text))] = parseAttributeItem(extractValue(token.text).s);
             }
+            var isUnions = (section === 'unions') && isNotEmptyText;
+            if (isUnions) {
+                r.unions[asName(extractKey(token.text))] = parseUnions(extractValue(token.text).s);
+            }
             var isModelAttribute = (section === 'models') && isNotEmptyText;
             if (isModelAttribute) {
-
-                _.set(r.models, modelName + '.' + asName(extractKey(token.text)), extractModelAttribute(token.text));
+                var modelAttrName = asName(extractKey(token.text));
+                var previous = _.get(r.models, [modelName, modelAttrName]);
+                var nextIdx = _.size(previous);
+                _.set(r.models, [modelName, modelAttrName, nextIdx], extractModelAttribute(token.text));
             }
 
         }
@@ -299,18 +312,44 @@ var ensureArray = function(value) {
     return _.isArray(value) ? value : [value];
 };
 
+var mergeObjs = function(total, n) {
+    return _.merge(total, n);
+};
+
+var mergeScripts = function(scripts) {
+    if (!_.isArray(scripts)) {
+        return scripts;
+    }
+    var _scripts = _.chain(scripts);
+    var r = {
+        title: scripts[0].title,
+        imports: _scripts.pluck('imports').flatten().uniq().value(),
+        weighting: _scripts.pluck('weighting').reduceRight(mergeObjs).value(),
+        frequency: _scripts.pluck('frequency').reduceRight(mergeObjs).value(),
+        models: _scripts.pluck('models').reduceRight(mergeObjs).value(),
+        unions: _scripts.pluck('unions').reduceRight(mergeObjs).value(),
+        refs: _scripts.pluck('refs').reduceRight(mergeObjs).value()
+    };
+
+    return r;
+};
+
 module.exports = function(cfg) {
     Joi.assert(cfg, fictionSchema);
 
+    var fileScriptLoader = function(scriptName) {
+        var scriptPath = cfg.scriptFolder + scriptName + FICTION_SUFFIX;
+        return fs.readFileAsync(scriptPath, 'utf8');
+    };
+
+    var anyScriptLoader = fileScriptLoader;
 
     var loadMdScript = function(scriptName) {
-        var scriptPath = cfg.scriptFolder + scriptName + FICTION_SUFFIX;
-        return fs.readFileAsync(scriptPath, 'utf8').then(text2obj);
+        return anyScriptLoader(scriptName).then(text2obj);
     };
 
     var readImports = function(info) {
-        var scriptPath = cfg.scriptFolder + info.scriptName + FICTION_SUFFIX;
-        return fs.readFileAsync(scriptPath, 'utf8').then(text2Imports).then(function(importList) {
+        return anyScriptLoader(info.scriptName).then(text2Imports).then(function(importList) {
             var childParents = cloneAndMergeArray(info.parents, info.scriptName);
             var childInfos = _.map(importList, function(ii) {
                 return {
@@ -336,9 +375,19 @@ module.exports = function(cfg) {
         return readScriptImports(cfg.script).map(loadMdScript);
     };
 
+    var parseAndMergeScript = function(params) {
+        return parseScript(params).then(mergeScripts);
+    };
+
+    var runScript = function() {
+        //TODO
+    };
+
     var fiction = {
-        parseScript: parseScript,
-        readScriptImports: readScriptImports
+        _parseScript: parseScript,
+        _parseAndMergeScript: parseAndMergeScript,
+        readScriptImports: readScriptImports,
+        runScript: runScript
     };
 
     return fiction;
