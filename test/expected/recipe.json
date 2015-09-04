@@ -24,6 +24,33 @@
     "Never": "0"
   },
   "models": {
+    "secret-spice": {
+      "ingredient": [
+        {
+          "frequency": "always",
+          "values": [
+            {
+              "quantity": {
+                "type": "int",
+                "min": 2,
+                "max": 2
+              },
+              "value": {
+                "type": "string",
+                "list": [
+                  "lemon",
+                  "orange",
+                  "coriander",
+                  "massala",
+                  "garam"
+                ]
+              },
+              "raw": "2 of *lemon, orange, coriander, massala, garam*"
+            }
+          ]
+        }
+      ]
+    },
     "sauce": {
       "olive-oil": [
         {
