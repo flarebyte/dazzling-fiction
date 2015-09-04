@@ -29,6 +29,8 @@
 * **spice:Garlic/black ** sometimes
 * ** Chilli** yes/no 
 * **secret** usually; `Secret`
+* **spoon of** *cognac*
+* **spoon of** *armagnac*
 
 ### Meat
 

@@ -38,9 +38,6 @@
 * **person** `Male` + `Female`
 * **people** `boys` + `girls`
 
-## Without
-
-* **notboys** `people` - `boys`
 
 ## References
 
