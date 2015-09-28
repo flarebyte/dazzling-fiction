@@ -5,15 +5,27 @@ var fs = bluePromise.promisifyAll(require("fs"));
 var marked = require('marked');
 var _ = require('lodash');
 var S = require('string');
+var dazzlingChance = require('dazzling-chance');
+
 var FICTION_SUFFIX = '.fiction.md';
 var YES_NO = 'yes/no';
+var TYPE_REF = "REF";
+var TYPE_MODEL = "MODEL";
+var TYPE_WEIGHTING = "WEIGHTING";
+var TYPE_UNION = "UNION";
+//var TYPE_BOOLEAN = "BOOLEAN";
+//var TYPE_LIST = "LIST";
+var TYPE_QUANTITY = "QTY";
+var TYPE_UNKNOWN = "UNKNOWN";
 
 var fictionSchema = Joi.object().keys({
     scriptFolder: Joi.string(),
     script: Joi.string().min(4).required()
 });
 var scriptSchema = Joi.object().keys({
-    text: Joi.string().min(20).required(),
+    id: Joi.string().min(1).max(100).required(),
+    query: Joi.string().min(5).max(100).required(),
+    text: Joi.string().min(20).required()
 });
 
 var extractKey = function(value) {
@@ -334,6 +346,235 @@ var mergeScripts = function(scripts) {
     return r;
 };
 
+var getValueType = function(value) {
+    var hasRef = _.has(value, 'value.ref');
+    return hasRef ? TYPE_REF : _.get(value, 'value.type');
+};
+
+var getRefType = function(_script, ref) {
+    if (_script.has(['models', ref]).value()) {
+        return TYPE_MODEL;
+    } else if (_script.has(['refs', ref]).value()) {
+        var vtype = getValueType(_script.get(['refs', ref]));
+        var hasQty = 'float' === vtype;
+        return hasQty ? TYPE_QUANTITY : TYPE_REF;
+    } else if (_script.has(['unions', ref]).value()) {
+        return TYPE_UNION;
+    } else if (_script.has(['weighting', ref]).value()) {
+        return TYPE_WEIGHTING;
+    } else {
+        return TYPE_UNKNOWN;
+    }
+};
+
+var getRefValue = function(_script, ref) {
+    var refType = getRefType(_script, ref);
+    switch (refType) {
+        case TYPE_REF:
+            return _script.get(['refs', ref]).value();
+        case TYPE_MODEL:
+            return _script.get(['models', ref]).value();
+        case TYPE_UNION:
+            return _script.get(['unions', ref]).value();
+        case TYPE_WEIGHTING:
+            return _script.get(['.weighting', ref]).value();
+        default:
+            throw new Error('Unkown ref type:' + refType);
+    }
+
+};
+
+var luckyQuantity = function(_script, chance, value) {
+    var isDirectMinMax = _.has(value, 'quantity.max');
+    if (isDirectMinMax) {
+        return chance.nextInt(_.get(value, 'quantity.min'), _.get(value, 'quantity.min'));
+    }
+    var refs = _.get(value, 'quantity.refs', []);
+    var qtyRefs = _script.get('refs').keys().intersection(refs).value();
+    var isQtyRef = (_.size(qtyRefs) > 0) && (getRefType(_script, qtyRefs[0]));
+    if (isQtyRef) {
+        return chance.nextInt(_script.get('value.min'), _script.get('value.max'));
+    }
+
+    return 10;
+};
+
+var luckyDirectIndex = function(_script, chance, value) {
+    var hasRefValue = _.has(value, 'value.ref');
+    if (hasRefValue) {
+        var ref = value.value.ref;
+        return {
+            v: ref,
+            t: getRefType(_script, ref)
+        };
+    }
+    var refs = _.get(value, 'quantity.refs', []);
+    var weightingRefs = _script.get('weighting').keys().intersection(refs).value();
+    var hasWeighting = (_.size(weightingRefs) > 0) && (_script.has(['weighting', weightingRefs[0]]));
+    var luck = _.get(value, 'value');
+    if (hasWeighting) {
+        luck.weight = weightingRefs[0];
+    }
+
+    var hasSingleItem = _.size(luck.list) === 1;
+    if (hasSingleItem) {
+        return _.chain(luck).get('list').first().value();
+    }
+
+    return chance.next(luck);
+
+};
+
+var incCounter = function(chance) {
+    chance.counter++;
+    return chance.counter;
+};
+
+var inferChildToStack = function(_script, chance, stk, ref) {
+    var refType = getRefType(_script, ref);
+    var refValue = getRefValue(_script, ref);
+    var name = [stk.root.k, ref, incCounter(chance)].join('-');
+    var cloned = {
+        refs: stk.refs,
+        root: stk.root,
+        parent: stk.child,
+        child: {
+            k: ref,
+            t: refType,
+            v: refValue,
+            n: name
+        }
+    };
+    return cloned;
+
+};
+var resolveUnionList = function(_script, ref) {
+    var list= _script.get(['unions',ref]).value();
+    //recursively solve or calculate all unions at the begining
+    return list;
+};
+
+var resolveModelRight = function(_script, chance, facts, stack) {
+    var parentQty = 1;
+    var resolveAttrValues = function(values, key) {
+
+        var resolveAttr = function(value) {
+            var id = [stack.root.k, key, incCounter(chance)].join('-');
+            var resolveOneAttr = function() {
+                var resolveOneColumn = function(colValue) {
+                    var li = luckyDirectIndex(_script, chance, colValue);
+                    var isRef = _.has(li, 'v');
+                    if (isRef) {
+                        if (li.t === TYPE_MODEL) {
+                            var modelStack = inferChildToStack(_script, chance, stack, li.v);
+                            var modelRight = _.flattenDeep(resolveModelRight(_script, chance, facts, modelStack));
+                            facts.push(modelRight);
+                            return modelStack.child.n;
+                        } else if (li.t === TYPE_REF) {
+                            var relRefName = ['rel', li.t, stack.root.k, li.v].join('-').toLowerCase();
+                            stack.refs[li.v]=relRefName;
+                            return relRefName;
+                        } else if (li.t === TYPE_UNION){
+                            return resolveUnionList(_script,li.v);
+                        } else {
+                            throw new Error("Should not be here: "+stack);
+                        }
+                    } else {
+                        return li;
+                    }
+
+                };
+
+                var columns = _.map(value.values, resolveOneColumn);
+                return {
+                    i: id,
+                    s: stack.child.n,
+                    p: key,
+                    o: columns
+                };
+
+            };
+            return _.map(_.range(parentQty), resolveOneAttr);
+
+        };
+        var tripleValues = _.map(values, resolveAttr);
+        return tripleValues;
+    };
+
+    return _.map(stack.child.v, resolveAttrValues);
+
+};
+
+var resolveStack = function(_script, chance, facts, stack) {
+    if (1 === 3) {
+        luckyQuantity();
+    }
+    var triples = resolveModelRight(_script, chance, facts, stack);
+    facts.push(triples);
+    return facts;
+};
+
+
+var produceQueryFacts = function(_script, chance, id, value) {
+    if (TYPE_REF !== getValueType(value)) {
+        throw new Error("The query should contain a reference !");
+    }
+
+    var ref = _.get(value, 'value.ref');
+     var stack = {
+        refs: {},
+        root: {
+            k: id,
+            v: value,
+            n: id
+        },
+        parent: {
+            k: id,
+            v: value,
+            n: id
+        },
+    };
+    var newStack = inferChildToStack(_script, chance, stack, ref);
+    var r = resolveStack(_script, chance, [], newStack);
+
+    return _.flatten(r, true);
+
+};
+
+
+var toChanceWeighting = function(keyValues) {
+    return {
+        name: keyValues[0],
+        weights: _.map(keyValues[1], toNumber)
+    };
+};
+
+var createChance = function(params, _script) {
+    var chanceConf = {
+        text: params.text,
+        characters: [{
+            chars: "0-9a-z",
+            integer: 0
+        }],
+        weighting: _script.get('weighting').pairs().map(toChanceWeighting).value()
+
+    };
+    var chance = dazzlingChance(chanceConf);
+    chance.counter = 0;
+    return chance;
+
+};
+
+var spiceScript = function(params, script) {
+    var _script = _.chain(script);
+    _script.set('state.counter', 0);
+    var query = extractModelAttribute(" " + params.query);
+    var chance = createChance(params, _script);
+    var value = _.get(query, 'values[0]');
+    var facts = produceQueryFacts(_script, chance, params.id, value);
+    return facts;
+};
+
 module.exports = function(cfg) {
     Joi.assert(cfg, fictionSchema);
 
@@ -370,17 +611,20 @@ module.exports = function(cfg) {
         }).reduce(concatArray).then(ensureArray);
     };
 
-    var parseScript = function(params) {
-        Joi.assert(params, scriptSchema);
+    var parseScript = function() {
         return readScriptImports(cfg.script).map(loadMdScript);
     };
 
-    var parseAndMergeScript = function(params) {
-        return parseScript(params).then(mergeScripts);
+    var parseAndMergeScript = function() {
+        return parseScript().then(mergeScripts);
     };
 
-    var runScript = function() {
-        //TODO
+    var runScript = function(params) {
+        Joi.assert(params, scriptSchema);
+        var localScript = function(v) {
+            return spiceScript(params, v);
+        };
+        return parseAndMergeScript().then(localScript);
     };
 
     var fiction = {

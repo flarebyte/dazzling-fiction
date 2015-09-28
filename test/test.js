@@ -2,6 +2,7 @@
 'use strict';
 var fs = require('fs-extra');
 var assert = require('chai').assert;
+var S = require('string');
 var dazzlingFiction = require('../');
 
 var othello = fs.readFileSync('test/fixtures/othello.txt').toString();
@@ -12,6 +13,41 @@ var jsonRecipe = fs.readJsonSync('test/expected/recipe.json');
 var jsonFamily = fs.readJsonSync('test/expected/family.json');
 var jsonMergeRecipe = fs.readJsonSync('test/expected/merge-recipe.json');
 var jsonMergeFamily = fs.readJsonSync('test/expected/merge-family.json');
+
+var createRecipeFict = function() {
+    return dazzlingFiction({
+        scriptFolder: "test/fixtures/",
+        script: 'recipe'
+    });
+
+};
+
+var runRecipe = function(done, id, query, force) {
+    var fiction = createRecipeFict();
+    var filename = 'test/expected/recipe-' + S(query).dasherize().s + '.json';
+    if (!force) {
+        var expectedJson = fs.readJsonSync(filename);
+    }
+
+    fiction.runScript({
+        id: id,
+        query: query,
+        text: othello
+    }).then(function(results) {
+
+        if (force) {
+            console.log("Creating file: " + filename);
+            fs.writeJsonSync(filename, results);
+        } else {
+            assert.deepEqual(results, expectedJson);
+        }
+    }).then(function() {
+        done();
+    }).catch(function(e) {
+        done(e);
+    });
+
+};
 
 describe('dazzling-fiction node module', function() {
     it('must read imports from script', function(done) {
@@ -51,9 +87,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'recipe'
         });
-        fiction._parseScript({
-            text: othello
-        }).then(function(results) {
+        fiction._parseScript().then(function(results) {
             assert.lengthOf(results, 5);
             assert.equal(results[0].title, 'Recipe');
             assert.equal(results[1].title, 'Basic');
@@ -79,9 +113,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'family'
         });
-        fiction._parseScript({
-            text: othello
-        }).then(function(results) {
+        fiction._parseScript().then(function(results) {
             assert.lengthOf(results, 1);
             assert.equal(results[0].title, 'Family Tree');
             //fs.writeJsonSync('test/expected/family.json', results[0]);
@@ -99,9 +131,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'recipe'
         });
-        fiction._parseAndMergeScript({
-            text: othello
-        }).then(function(results) {
+        fiction._parseAndMergeScript().then(function(results) {
             assert.deepEqual(results.weighting.experimental, ['1', '2', '4', '8', '16']);
             assert.deepEqual(results.weighting.popular, ['1', '2', '3', '5', '8', '13', '21', '20', '13', '8', '5', '3', '3', '1']);
             assert.deepEqual(results.weighting.fibo, ['1', '2', '3', '5', '8', '13']);
@@ -131,9 +161,7 @@ describe('dazzling-fiction node module', function() {
             scriptFolder: "test/fixtures/",
             script: 'family'
         });
-        fiction._parseAndMergeScript({
-            text: othello
-        }).then(function(results) {
+        fiction._parseAndMergeScript().then(function(results) {
             //fs.writeJsonSync('test/expected/merge-family.json', results);
             assert.deepEqual(results, jsonMergeFamily);
             assert.deepEqual(results, jsonFamily);
@@ -144,5 +172,31 @@ describe('dazzling-fiction node module', function() {
         });
 
     });
+
+    it('must run the recipe script for Dessert', function(done) {
+        runRecipe(done,"main123", "2 of `Dessert`", false);
+    });
+
+    it('must run the recipe script for Sauce', function(done) {
+        runRecipe(done, "main123", "2 of `Sauce`", false);
+    });
+
+    it('must run the recipe script for Meat', function(done) {
+        runRecipe(done, "main123", "2 of `Meat`", false);
+    });
+
+    it('must run the recipe script for Vegetable', function(done) {
+        runRecipe(done, "main123", "1 of `Vegetable`", false);
+    });
+
+    it('must run the recipe script for Meal', function(done) {
+        runRecipe(done, "main123", "2 of `Meal`", false);
+    });
+
+    it('must run the recipe script for Secret spice', function(done) {
+        runRecipe(done, "main123", "2 of `Secret spice`", false);
+    });
+
+
 
 });

@@ -18,7 +18,7 @@
 
 ### Secret spice
 
-** ingredient ** 2 of *lemon, orange, coriander, massala, garam*
+* ** ingredient ** 2 of *lemon, orange, coriander, massala, garam*
 
 ### Sauce
 
