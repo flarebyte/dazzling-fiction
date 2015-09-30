@@ -431,7 +431,7 @@
       ]
     }
   },
-  "unions": {},
+  "lists": {},
   "refs": {
     "secret": {
       "quantity": {

@@ -1,7 +1,7 @@
 'use strict';
 var Joi = require('joi');
 var bluePromise = require("bluebird");
-var fs = bluePromise.promisifyAll(require("fs"));
+var fs = bluePromise.promisifyAll(require("fs-extra"));
 var marked = require('marked');
 var _ = require('lodash');
 var S = require('string');
@@ -12,15 +12,22 @@ var YES_NO = 'yes/no';
 var TYPE_REF = "REF";
 var TYPE_MODEL = "MODEL";
 var TYPE_WEIGHTING = "WEIGHTING";
-var TYPE_UNION = "UNION";
 //var TYPE_BOOLEAN = "BOOLEAN";
-//var TYPE_LIST = "LIST";
+var TYPE_LIST = "LIST";
 var TYPE_QUANTITY = "QTY";
 var TYPE_UNKNOWN = "UNKNOWN";
 
+var curieSchema = Joi.object().keys({
+    startsWith: Joi.string().min(1).required(),
+    contentType: Joi.string().required().valid('application/json', 'text/plain'),
+    prefix: Joi.string().required(),
+    suffix: Joi.string().required()
+});
+
 var fictionSchema = Joi.object().keys({
     scriptFolder: Joi.string(),
-    script: Joi.string().min(4).required()
+    script: Joi.string().min(4).required(),
+    curies: Joi.array().items(curieSchema)
 });
 var scriptSchema = Joi.object().keys({
     id: Joi.string().min(1).max(100).required(),
@@ -100,6 +107,11 @@ var extractRefs = function(value) {
         ref = extractBetween(ref.remain, '`', '`');
     }
     return r;
+};
+
+var extractCommand = function(value) {
+    var cmd = extractBetween(value, '`', '`');
+    return cmd;
 };
 
 var extractMinMax = function(value) {
@@ -206,9 +218,27 @@ var parseAttributeItem = function(value) {
     return r;
 };
 
-var parseUnions = function(value) {
-    var refs = extractRefs(value);
-    return refs.found ? refs.extracted : [];
+var parseLists = function(value) {
+    var command = extractCommand(value);
+    if (command.found) {
+        return {
+            command: command.extracted.s
+        };
+    }
+    var list = extractBetween(value, '*', '*');
+    if (list.found) {
+        var csvList = list.extracted.parseCSV();
+        var listType = checkListType(csvList);
+        if (listType === 'number') {
+            csvList = _.map(csvList, toNumber);
+        }
+        return {
+            type: listType,
+            list: csvList
+        };
+    } else {
+        return [];
+    }
 };
 
 var extractModelAttribute = function(value) {
@@ -231,7 +261,7 @@ var md2obj = function(tokens) {
         weighting: {},
         frequency: {},
         models: {},
-        unions: {},
+        lists: {},
         refs: {}
     };
     var length = tokens.length;
@@ -269,9 +299,9 @@ var md2obj = function(tokens) {
             if (isRefs) {
                 r.refs[asName(extractKey(token.text))] = parseAttributeItem(extractValue(token.text).s);
             }
-            var isUnions = (section === 'unions') && isNotEmptyText;
-            if (isUnions) {
-                r.unions[asName(extractKey(token.text))] = parseUnions(extractValue(token.text).s);
+            var isLists = (section === 'lists') && isNotEmptyText;
+            if (isLists) {
+                r.lists[asName(extractKey(token.text))] = parseLists(extractValue(token.text).s);
             }
             var isModelAttribute = (section === 'models') && isNotEmptyText;
             if (isModelAttribute) {
@@ -339,7 +369,7 @@ var mergeScripts = function(scripts) {
         weighting: _scripts.pluck('weighting').reduceRight(mergeObjs).value(),
         frequency: _scripts.pluck('frequency').reduceRight(mergeObjs).value(),
         models: _scripts.pluck('models').reduceRight(mergeObjs).value(),
-        unions: _scripts.pluck('unions').reduceRight(mergeObjs).value(),
+        lists: _scripts.pluck('lists').reduceRight(mergeObjs).value(),
         refs: _scripts.pluck('refs').reduceRight(mergeObjs).value()
     };
 
@@ -358,8 +388,8 @@ var getRefType = function(_script, ref) {
         var vtype = getValueType(_script.get(['refs', ref]));
         var hasQty = 'float' === vtype;
         return hasQty ? TYPE_QUANTITY : TYPE_REF;
-    } else if (_script.has(['unions', ref]).value()) {
-        return TYPE_UNION;
+    } else if (_script.has(['lists', ref]).value()) {
+        return TYPE_LIST;
     } else if (_script.has(['weighting', ref]).value()) {
         return TYPE_WEIGHTING;
     } else {
@@ -374,8 +404,8 @@ var getRefValue = function(_script, ref) {
             return _script.get(['refs', ref]).value();
         case TYPE_MODEL:
             return _script.get(['models', ref]).value();
-        case TYPE_UNION:
-            return _script.get(['unions', ref]).value();
+        case TYPE_LIST:
+            return _script.get(['lists', ref]).value();
         case TYPE_WEIGHTING:
             return _script.get(['.weighting', ref]).value();
         default:
@@ -399,6 +429,15 @@ var luckyQuantity = function(_script, chance, value) {
     return 10;
 };
 
+var luckyInList = function(chance, value) {
+    var hasSingleItem = _.size(value.list) === 1;
+    if (hasSingleItem) {
+        return _.chain(value).get('list').first().value();
+    } else {
+        return chance.next(value);
+    }
+};
+
 var luckyDirectIndex = function(_script, chance, value) {
     var hasRefValue = _.has(value, 'value.ref');
     if (hasRefValue) {
@@ -416,13 +455,7 @@ var luckyDirectIndex = function(_script, chance, value) {
         luck.weight = weightingRefs[0];
     }
 
-    var hasSingleItem = _.size(luck.list) === 1;
-    if (hasSingleItem) {
-        return _.chain(luck).get('list').first().value();
-    }
-
-    return chance.next(luck);
-
+    return luckyInList(chance, luck);
 };
 
 var incCounter = function(chance) {
@@ -448,10 +481,74 @@ var inferChildToStack = function(_script, chance, stk, ref) {
     return cloned;
 
 };
-var resolveUnionList = function(_script, ref) {
-    var list= _script.get(['unions',ref]).value();
-    //recursively solve or calculate all unions at the begining
-    return list;
+
+var fileListLoader = function(conf, uri, contentType) {
+    if (contentType === 'application/json') {
+        return fs.readJsonSync(uri);
+    } else {
+        var content = fs.readFileSync(uri, {
+            'encoding': 'utf8'
+        });
+        var lines = S(content).parseCSV("\n");
+        return lines;
+    }
+};
+var listLoader = function(uri) {
+    var hasHttp = S(uri).startsWith('http://') || S(uri).startsWith('https://');
+    if (hasHttp) {
+        throw new Error('Not supported yet');
+    } else {
+        return fileListLoader;
+    }
+};
+
+var uncurify = function(_script, uri) {
+    var curies = _script.get('cfg.curies').value();
+    if (_.size(curies) < 1) {
+        return {
+            path: uri,
+            contentType: 'text/plain'
+        };
+    }
+
+    var u = S(uri);
+    for (var i = 0; i < curies.length; i++) {
+        var curie = curies[i];
+        if (u.startsWith(curie.startsWith)) {
+            var path = [curie.prefix, u.chompLeft(curie.startsWith).s, curie.suffix].join('');
+            return {
+                path: path,
+                contentType: curie.contentType,
+                loader: listLoader(path)
+            };
+        }
+    }
+    return {
+        path: uri,
+        contentType: 'text/plain',
+        loader: listLoader(uri)
+    };
+};
+
+var resolveList = function(_script, chance, ref) {
+    var list = _script.get(['lists', ref]);
+    var hasCommand = list.has('command').value();
+    if (hasCommand) {
+        var cmd = list.get('command').value();
+        var uncur = uncurify(_script, cmd);
+        var loadedList = uncur.loader(_script.get('cfg').value(), uncur.path, uncur.contentType);
+        var listType = checkListType(loadedList);
+        if (listType === 'number') {
+            loadedList = _.map(loadedList, toNumber);
+        }
+        var listObj = {
+            type: listType,
+            list: loadedList
+        };
+        return luckyInList(chance, listObj);
+    }
+
+    return luckyInList(chance, list.value());
 };
 
 var resolveModelRight = function(_script, chance, facts, stack) {
@@ -472,12 +569,12 @@ var resolveModelRight = function(_script, chance, facts, stack) {
                             return modelStack.child.n;
                         } else if (li.t === TYPE_REF) {
                             var relRefName = ['rel', li.t, stack.root.k, li.v].join('-').toLowerCase();
-                            stack.refs[li.v]=relRefName;
+                            stack.refs[li.v] = relRefName;
                             return relRefName;
-                        } else if (li.t === TYPE_UNION){
-                            return resolveUnionList(_script,li.v);
+                        } else if (li.t === TYPE_LIST) {
+                            return resolveList(_script, chance, li.v);
                         } else {
-                            throw new Error("Should not be here: "+stack);
+                            throw new Error("Should not be here: " + stack);
                         }
                     } else {
                         return li;
@@ -521,7 +618,7 @@ var produceQueryFacts = function(_script, chance, id, value) {
     }
 
     var ref = _.get(value, 'value.ref');
-     var stack = {
+    var stack = {
         refs: {},
         root: {
             k: id,
@@ -565,9 +662,12 @@ var createChance = function(params, _script) {
 
 };
 
-var spiceScript = function(params, script) {
+var spiceScript = function(cfg, params, script) {
+    script.state = {
+        counter: 0
+    };
+    script.cfg = cfg;
     var _script = _.chain(script);
-    _script.set('state.counter', 0);
     var query = extractModelAttribute(" " + params.query);
     var chance = createChance(params, _script);
     var value = _.get(query, 'values[0]');
@@ -622,7 +722,7 @@ module.exports = function(cfg) {
     var runScript = function(params) {
         Joi.assert(params, scriptSchema);
         var localScript = function(v) {
-            return spiceScript(params, v);
+            return spiceScript(cfg, params, v);
         };
         return parseAndMergeScript().then(localScript);
     };

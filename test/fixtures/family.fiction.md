@@ -8,18 +8,26 @@
 
 * **Never, Rarely, Occasionally, Sometimes, Often, Usually, Always** 0,1,2,3,4,5,6
 
+## Lists
+
+* **male first name** *sebastian, adrian, james, henry, john*
+
+* **female first name** `here:female-first-name`
+
+* **common last name**  *smith, keaton, dupont, baker, butcher* 
+
 ## Models
 
 ### Male
 
-* **first name** *sebastian, adrian, james, henry, john*
-* **last name** always; 1 of *smith, keaton, dupont, baker, butcher* 
+* **first name** `male first name`
+* **last name** always; 1 of `common last name`
 * **sex** *male*
 
 ### Female
 
-* **first name** *jane, kate, victoria, elisabeth, estelle,clara*
-* **last name** always; 1 of *smith, keaton, dupont, baker, butcher* 
+* **first name** `female first name`
+* **last name** always; 1 of `common last name`
 * **sex** *female*
 
 
@@ -32,12 +40,6 @@
 
 * **dad** `boys`
 * **mum** `girls`
-
-## Unions
-
-* **person** `Male` + `Female`
-* **people** `boys` + `girls`
-
 
 ## References
 
