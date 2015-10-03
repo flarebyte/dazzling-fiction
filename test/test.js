@@ -14,6 +14,9 @@ var jsonFamily = fs.readJsonSync('test/expected/family.json');
 var jsonMergeRecipe = fs.readJsonSync('test/expected/merge-recipe.json');
 var jsonMergeFamily = fs.readJsonSync('test/expected/merge-family.json');
 
+var forceRecipe = false;
+var forceFamily = false;
+
 var createRecipeFict = function() {
     return dazzlingFiction({
         scriptFolder: "test/fixtures/",
@@ -25,6 +28,53 @@ var createRecipeFict = function() {
 var runRecipe = function(done, id, query, force) {
     var fiction = createRecipeFict();
     var filename = 'test/expected/recipe-' + S(query).dasherize().s + '.json';
+    if (!force) {
+        var expectedJson = fs.readJsonSync(filename);
+    }
+
+    fiction.runScript({
+        id: id,
+        query: query,
+        text: othello
+    }).then(function(results) {
+
+        if (force) {
+            console.log("Creating file: " + filename);
+            fs.writeJsonSync(filename, results);
+        } else {
+            assert.deepEqual(results, expectedJson);
+        }
+    }).then(function() {
+        done();
+    }).catch(function(e) {
+        done(e);
+    });
+
+};
+
+var createFamilyFict = function() {
+    return dazzlingFiction({
+        scriptFolder: "test/fixtures/",
+        script: 'family',
+        curies: [{
+            startsWith: "web:",
+            prefix: "http://localhost:8222",
+            suffix: ".json",
+            contentType: "application/json"
+
+        }, {
+            startsWith: "here:",
+            prefix: "test/fixtures/",
+            suffix: ".txt",
+            contentType: "text/plain"
+        }]
+    });
+
+};
+
+var runFamily = function(done, id, query, force) {
+    var fiction = createFamilyFict();
+    var filename = 'test/expected/family-' + S(query).dasherize().s + '.json';
     if (!force) {
         var expectedJson = fs.readJsonSync(filename);
     }
@@ -98,8 +148,13 @@ describe('dazzling-fiction node module', function() {
             assert.deepEqual(recipe.imports, ['basic', 'side-basic', 'second-basic']);
             assert.deepEqual(recipe.weighting.experimental, ['1', '2', '4', '8', '16']);
             assert.equal(recipe.frequency.Never, 0, 'Never');
-            //fs.writeJsonSync('test/expected/recipe.json', results[0]);
-            assert.deepEqual(results[0], jsonRecipe);
+            if (forceRecipe) {
+                fs.writeJsonSync('test/expected/recipe.json', results[0]);
+            } else {
+                assert.deepEqual(results[0], jsonRecipe);
+            }
+
+
         }).then(function() {
             done();
         }).catch(function(e) {
@@ -116,8 +171,13 @@ describe('dazzling-fiction node module', function() {
         fiction._parseScript().then(function(results) {
             assert.lengthOf(results, 1);
             assert.equal(results[0].title, 'Family Tree');
-            //fs.writeJsonSync('test/expected/family.json', results[0]);
-            assert.deepEqual(results[0], jsonFamily);
+            if (forceFamily) {
+                console.log('writing family.json');
+                fs.writeJsonSync('test/expected/family.json', results[0]);
+            } else {
+                assert.deepEqual(results[0], jsonFamily);
+            }
+
         }).then(function() {
             done();
         }).catch(function(e) {
@@ -146,8 +206,12 @@ describe('dazzling-fiction node module', function() {
                 "Rarely": "1",
                 "Never": "0"
             });
-            //fs.writeJsonSync('test/expected/merge-recipe.json', results);
-            assert.deepEqual(results, jsonMergeRecipe);
+            if (forceRecipe) {
+                fs.writeJsonSync('test/expected/merge-recipe.json', results);
+            } else {
+                assert.deepEqual(results, jsonMergeRecipe);
+            }
+
         }).then(function() {
             done();
         }).catch(function(e) {
@@ -162,9 +226,13 @@ describe('dazzling-fiction node module', function() {
             script: 'family'
         });
         fiction._parseAndMergeScript().then(function(results) {
-            //fs.writeJsonSync('test/expected/merge-family.json', results);
-            assert.deepEqual(results, jsonMergeFamily);
-            assert.deepEqual(results, jsonFamily);
+            if (forceFamily) {
+                console.log('writing merge-family.json');
+                fs.writeJsonSync('test/expected/merge-family.json', results);
+            } else {
+                assert.deepEqual(results, jsonMergeFamily);
+                assert.deepEqual(results, jsonFamily);
+            }
         }).then(function() {
             done();
         }).catch(function(e) {
@@ -174,7 +242,7 @@ describe('dazzling-fiction node module', function() {
     });
 
     it('must run the recipe script for Dessert', function(done) {
-        runRecipe(done,"main123", "2 of `Dessert`", false);
+        runRecipe(done, "main123", "2 of `Dessert`", false);
     });
 
     it('must run the recipe script for Sauce', function(done) {
@@ -197,6 +265,14 @@ describe('dazzling-fiction node module', function() {
         runRecipe(done, "main123", "2 of `Secret spice`", false);
     });
 
+    //Family scripts
+    it('must run the family script for female', function(done) {
+        runFamily(done, "f", "2 of `female`", false);
+    });
+
+    it('must run the family script for male', function(done) {
+        runFamily(done, "f", "2 of `male`", false);
+    });
 
 
 });

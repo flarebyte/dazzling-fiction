@@ -32,16 +32,9 @@
                 "max": 1
               },
               "value": {
-                "type": "string",
-                "list": [
-                  "sebastian",
-                  "adrian",
-                  "james",
-                  "henry",
-                  "john"
-                ]
+                "ref": "male-first-name"
               },
-              "raw": "*sebastian, adrian, james, henry, john*"
+              "raw": "`male first name`"
             }
           ]
         }
@@ -57,16 +50,9 @@
                 "max": 1
               },
               "value": {
-                "type": "string",
-                "list": [
-                  "smith",
-                  "keaton",
-                  "dupont",
-                  "baker",
-                  "butcher"
-                ]
+                "ref": "common-last-name"
               },
-              "raw": "1 of *smith, keaton, dupont, baker, butcher* "
+              "raw": "1 of `common last name`"
             }
           ]
         }
@@ -105,17 +91,9 @@
                 "max": 1
               },
               "value": {
-                "type": "string",
-                "list": [
-                  "jane",
-                  "kate",
-                  "victoria",
-                  "elisabeth",
-                  "estelle",
-                  "clara"
-                ]
+                "ref": "female-first-name"
               },
-              "raw": "*jane, kate, victoria, elisabeth, estelle,clara*"
+              "raw": "`female first name`"
             }
           ]
         }
@@ -131,16 +109,9 @@
                 "max": 1
               },
               "value": {
-                "type": "string",
-                "list": [
-                  "smith",
-                  "keaton",
-                  "dupont",
-                  "baker",
-                  "butcher"
-                ]
+                "ref": "common-last-name"
               },
-              "raw": "1 of *smith, keaton, dupont, baker, butcher* "
+              "raw": "1 of `common last name`"
             }
           ]
         }
@@ -244,15 +215,30 @@
       ]
     }
   },
-  "unions": {
-    "person": [
-      "male",
-      "female"
-    ],
-    "people": [
-      "boys",
-      "girls"
-    ]
+  "lists": {
+    "male-first-name": {
+      "type": "string",
+      "list": [
+        "sebastian",
+        "adrian",
+        "james",
+        "henry",
+        "john"
+      ]
+    },
+    "female-first-name": {
+      "command": "here:female-first-name"
+    },
+    "common-last-name": {
+      "type": "string",
+      "list": [
+        "smith",
+        "keaton",
+        "dupont",
+        "baker",
+        "butcher"
+      ]
+    }
   },
   "refs": {
     "boys": {
