@@ -10,11 +10,13 @@
 
 ## Lists
 
-* **male first name** *sebastian, adrian, james, henry, john*
+* **male first name** `json-file:male-first-name`
 
 * **female first name** `here:female-first-name`
 
-* **common last name**  *smith, keaton, dupont, baker, butcher* 
+* **common last name**  `web:common-name`
+
+* **code name**  `json-web:code-name`
 
 ## Models
 
@@ -22,6 +24,7 @@
 
 * **first name** `male first name`
 * **last name** always; 1 of `common last name`
+* **code name** always; 1 of `code name`
 * **sex** *male*
 
 ### Female
@@ -33,17 +36,11 @@
 
 ### Parent
 
-* **son** sometimes ;1 to 8 of `boys`
-* **daughter** sometimes ;0 to 7 of `girls`
-
-### Child
-
-* **dad** `boys`
-* **mum** `girls`
+* **son** sometimes ;1 to 8 of `male`
+* **daughter** sometimes ;0 to 7 of `female`
 
 ## References
 
 * **boys** 3 of `male`
 * **girls** 3 of `female`
 * **parents** 4 of `parent`
-* **children**  3 to 6 of `child`
