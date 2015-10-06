@@ -1,7 +1,7 @@
 {
   "name": "dazzling-fiction",
   "version": "0.1.0",
-  "description": "Fictional facts generator based on a given input",
+  "description": "Fictional facts generator based on a markdown fiction dialect",
   "homepage": "https://github.com/flarebyte/dazzling-fiction",
   "author": {
     "name": "Olivier Huin",
@@ -11,13 +11,18 @@
   "license": "MIT",
   "files": [
     "index.js",
-    "cli.js"
+    "fict.js"
   ],
   "keywords": [
     "dazzling-fiction",
-    "random",
     "facts",
-    "datalog"
+    "markdown",
+    "random",
+    "datalog",
+    "artificial intelligence",
+    "rdf",
+    "csv",
+    "linked data"
   ],
   "dependencies": {
     "bluebird": "^2.9.34",
@@ -29,6 +34,7 @@
     "json-commander": "^0.2.0",
     "lodash": "^3.10.1",
     "marked": "^0.3.5",
+    "pkginfo": "^0.3.0",
     "request": "^2.61.0",
     "string": "^3.3.1",
     "sync-request": "^2.0.1"
@@ -51,6 +57,6 @@
     "test": "grunt"
   },
   "bin": {
-    "dazzling-fiction": "cli.js"
+    "fict": "fict.js"
   }
 }
