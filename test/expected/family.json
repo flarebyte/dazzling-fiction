@@ -11,13 +11,14 @@
     ]
   },
   "frequency": {
-    "Always": "6",
-    "Usually": "5",
-    "Often": "4",
-    "Sometimes": "3",
-    "Occasionally": "2",
-    "Rarely": "1",
-    "Never": "0"
+    "always": 6,
+    "usually": 5,
+    "often": 4,
+    "sometimes": 3,
+    "occasionally": 2,
+    "rarely": 1,
+    "never": 0,
+    "max": 6
   },
   "models": {
     "male": {
@@ -53,6 +54,24 @@
                 "ref": "common-last-name"
               },
               "raw": "1 of `common last name`"
+            }
+          ]
+        }
+      ],
+      "code-name": [
+        {
+          "frequency": "always",
+          "values": [
+            {
+              "quantity": {
+                "type": "int",
+                "min": 1,
+                "max": 1
+              },
+              "value": {
+                "ref": "code-name"
+              },
+              "raw": "1 of `code name`"
             }
           ]
         }
@@ -150,9 +169,9 @@
                 "max": 8
               },
               "value": {
-                "ref": "boys"
+                "ref": "male"
               },
-              "raw": "1 to 8 of `boys`"
+              "raw": "1 to 8 of `male`"
             }
           ]
         }
@@ -168,47 +187,9 @@
                 "max": 7
               },
               "value": {
-                "ref": "girls"
+                "ref": "female"
               },
-              "raw": "0 to 7 of `girls`"
-            }
-          ]
-        }
-      ]
-    },
-    "child": {
-      "dad": [
-        {
-          "frequency": "always",
-          "values": [
-            {
-              "quantity": {
-                "type": "int",
-                "min": 1,
-                "max": 1
-              },
-              "value": {
-                "ref": "boys"
-              },
-              "raw": "`boys`"
-            }
-          ]
-        }
-      ],
-      "mum": [
-        {
-          "frequency": "always",
-          "values": [
-            {
-              "quantity": {
-                "type": "int",
-                "min": 1,
-                "max": 1
-              },
-              "value": {
-                "ref": "girls"
-              },
-              "raw": "`girls`"
+              "raw": "0 to 7 of `female`"
             }
           ]
         }
@@ -217,27 +198,16 @@
   },
   "lists": {
     "male-first-name": {
-      "type": "string",
-      "list": [
-        "sebastian",
-        "adrian",
-        "james",
-        "henry",
-        "john"
-      ]
+      "command": "json-file:male-first-name"
     },
     "female-first-name": {
       "command": "here:female-first-name"
     },
     "common-last-name": {
-      "type": "string",
-      "list": [
-        "smith",
-        "keaton",
-        "dupont",
-        "baker",
-        "butcher"
-      ]
+      "command": "web:common-name"
+    },
+    "code-name": {
+      "command": "json-web:code-name"
     }
   },
   "refs": {
@@ -273,17 +243,6 @@
         "ref": "parent"
       },
       "raw": " 4 of `parent`"
-    },
-    "children": {
-      "quantity": {
-        "type": "int",
-        "min": 3,
-        "max": 6
-      },
-      "value": {
-        "ref": "child"
-      },
-      "raw": "  3 to 6 of `child`"
     }
   }
 }

@@ -6,6 +6,7 @@ var marked = require('marked');
 var _ = require('lodash');
 var S = require('string');
 var dazzlingChance = require('dazzling-chance');
+var sync_request = require('sync-request');
 
 var FICTION_SUFFIX = '.fiction.md';
 var YES_NO = 'yes/no';
@@ -290,9 +291,13 @@ var md2obj = function(tokens) {
             if (isFrequency) {
                 var freqNames = extractKey(token.text).parseCSV();
                 var freqValues = extractValue(token.text).parseCSV();
+                var freqMax = 1;
                 for (var j = freqNames.length - 1; j >= 0; j--) {
-                    r.frequency[freqNames[j]] = freqValues[j];
+                    var freqValue = S(freqValues[j]).toInt();
+                    r.frequency[freqNames[j].toLowerCase()] = freqValue;
+                    freqMax = (freqValue > freqMax) ? freqValue : freqMax;
                 }
+                r.frequency.max = freqMax;
             }
 
             var isRefs = (section === 'references') && isNotEmptyText;
@@ -385,7 +390,7 @@ var getRefType = function(_script, ref) {
     if (_script.has(['models', ref]).value()) {
         return TYPE_MODEL;
     } else if (_script.has(['refs', ref]).value()) {
-        var vtype = getValueType(_script.get(['refs', ref]));
+        var vtype = getValueType(_script.get(['refs', ref]).value());
         var hasQty = 'float' === vtype;
         return hasQty ? TYPE_QUANTITY : TYPE_REF;
     } else if (_script.has(['lists', ref]).value()) {
@@ -417,16 +422,34 @@ var getRefValue = function(_script, ref) {
 var luckyQuantity = function(_script, chance, value) {
     var isDirectMinMax = _.has(value, 'quantity.max');
     if (isDirectMinMax) {
-        return chance.nextInt(_.get(value, 'quantity.min'), _.get(value, 'quantity.min'));
+        var qtyMin = _.get(value, 'quantity.min');
+        var qtyMax = _.get(value, 'quantity.max');
+        var isLuck = qtyMin < qtyMax;
+        return isLuck ? chance.nextInt(qtyMin, qtyMax) : qtyMin;
     }
     var refs = _.get(value, 'quantity.refs', []);
     var qtyRefs = _script.get('refs').keys().intersection(refs).value();
-    var isQtyRef = (_.size(qtyRefs) > 0) && (getRefType(_script, qtyRefs[0]));
+    var isQtyRef = (_.size(qtyRefs) > 0) && (getRefType(_script, qtyRefs[0]) === TYPE_QUANTITY);
     if (isQtyRef) {
-        return chance.nextInt(_script.get('value.min'), _script.get('value.max'));
+        var qtyRefValue = _script.get(['refs', qtyRefs[0]]).value();
+        return chance.nextInt(_.get(qtyRefValue, 'value.min'), _.get(qtyRefValue, 'value.max'));
     }
 
-    return 10;
+    return 5;
+};
+
+var luckyFrequency = function(_script, chance, value) {
+    var freq = _script.get(['frequency', value]).value();
+    if (freq === 0) {
+        return false;
+    }
+    var freqMax = _script.get('frequency.max').value();
+    var isMax = (freq === freqMax);
+    if (isMax) {
+        return true;
+    }
+    var luck = chance.nextInt(0, freqMax);
+    return (luck <= freq);
 };
 
 var luckyInList = function(chance, value) {
@@ -463,10 +486,10 @@ var incCounter = function(chance) {
     return chance.counter;
 };
 
-var inferChildToStack = function(_script, chance, stk, ref) {
+var inferChildToStack = function(_script, chance, stk, ref, idx) {
     var refType = getRefType(_script, ref);
     var refValue = getRefValue(_script, ref);
-    var name = [stk.root.k, ref, incCounter(chance)].join('-');
+    var name = [stk.root.k, ref, incCounter(chance), idx + 1].join('-');
     var cloned = {
         refs: stk.refs,
         root: stk.root,
@@ -493,10 +516,24 @@ var fileListLoader = function(conf, uri, contentType) {
         return lines;
     }
 };
+
+var webListLoader = function(conf, uri, contentType) {
+    var res = sync_request('GET', uri, {
+        headers: {
+            "accept": contentType
+        }
+    });
+    var body = res.getBody('utf8');
+    if (contentType === 'application/json') {
+        return JSON.parse(body);
+    } else {
+        return S(body).parseCSV("\n");
+    }
+};
 var listLoader = function(uri) {
     var hasHttp = S(uri).startsWith('http://') || S(uri).startsWith('https://');
     if (hasHttp) {
-        throw new Error('Not supported yet');
+        return webListLoader;
     } else {
         return fileListLoader;
     }
@@ -535,6 +572,10 @@ var resolveList = function(_script, chance, ref) {
     var hasCommand = list.has('command').value();
     if (hasCommand) {
         var cmd = list.get('command').value();
+        var cached = chance.cachedList[cmd];
+        if (_.isObject(cached)) {
+            return luckyInList(chance, cached);
+        }
         var uncur = uncurify(_script, cmd);
         var loadedList = uncur.loader(_script.get('cfg').value(), uncur.path, uncur.contentType);
         var listType = checkListType(loadedList);
@@ -545,6 +586,7 @@ var resolveList = function(_script, chance, ref) {
             type: listType,
             list: loadedList
         };
+        chance.cachedList[cmd] = listObj;
         return luckyInList(chance, listObj);
     }
 
@@ -552,18 +594,18 @@ var resolveList = function(_script, chance, ref) {
 };
 
 var resolveModelRight = function(_script, chance, facts, stack) {
-    var parentQty = 1;
     var resolveAttrValues = function(values, key) {
-
         var resolveAttr = function(value) {
-            var id = [stack.root.k, key, incCounter(chance)].join('-');
-            var resolveOneAttr = function() {
+            var notWished = !luckyFrequency(_script, chance, value.frequency);
+            var noValue = _.isEmpty(value.values);
+            var attrQuantity = (noValue || notWished) ? 1 : luckyQuantity(_script, chance, _.chain(value).get('values').first().value());
+            var resolveOneAttr = function(oneAttrIdx) {
                 var resolveOneColumn = function(colValue) {
                     var li = luckyDirectIndex(_script, chance, colValue);
                     var isRef = _.has(li, 'v');
                     if (isRef) {
                         if (li.t === TYPE_MODEL) {
-                            var modelStack = inferChildToStack(_script, chance, stack, li.v);
+                            var modelStack = inferChildToStack(_script, chance, stack, li.v, oneAttrIdx);
                             var modelRight = _.flattenDeep(resolveModelRight(_script, chance, facts, modelStack));
                             facts.push(modelRight);
                             return modelStack.child.n;
@@ -584,14 +626,13 @@ var resolveModelRight = function(_script, chance, facts, stack) {
 
                 var columns = _.map(value.values, resolveOneColumn);
                 return {
-                    i: id,
                     s: stack.child.n,
                     p: key,
                     o: columns
                 };
 
             };
-            return _.map(_.range(parentQty), resolveOneAttr);
+            return notWished ? [] : _.map(_.range(attrQuantity), resolveOneAttr);
 
         };
         var tripleValues = _.map(values, resolveAttr);
@@ -603,9 +644,6 @@ var resolveModelRight = function(_script, chance, facts, stack) {
 };
 
 var resolveStack = function(_script, chance, facts, stack) {
-    if (1 === 3) {
-        luckyQuantity();
-    }
     var triples = resolveModelRight(_script, chance, facts, stack);
     facts.push(triples);
     return facts;
@@ -631,8 +669,13 @@ var produceQueryFacts = function(_script, chance, id, value) {
             n: id
         },
     };
-    var newStack = inferChildToStack(_script, chance, stack, ref);
-    var r = resolveStack(_script, chance, [], newStack);
+
+    var resolveQueryStack = function(n) {
+        var newStack = inferChildToStack(_script, chance, stack, ref, n);
+        return resolveStack(_script, chance, [], newStack);
+    };
+    var qty = luckyQuantity(_script, chance, value);
+    var r = _.map(_.range(qty), resolveQueryStack);
 
     return _.flatten(r, true);
 
@@ -658,8 +701,31 @@ var createChance = function(params, _script) {
     };
     var chance = dazzlingChance(chanceConf);
     chance.counter = 0;
+    chance.cachedList = {};
     return chance;
 
+};
+
+var produceScriptFacts = function(_script, chance, runId) {
+    var modelFacts = function(modelAttributes, model) {
+        var prefixWithModel = function(m) {
+            var id = incCounter(chance);
+            var r = {
+                "i": runId+'-'+m + "-" + id,
+                "s": m,
+                "p": "child-of-fiction-model",
+                "o": [
+                    model
+                ]
+            };
+            return r;
+        };
+        var modelAttrs = _.keys(modelAttributes);
+        return _.map(modelAttrs, prefixWithModel);
+
+    };
+    var scriptFacts = _script.get('models').map(modelFacts).value();
+    return _.flatten(scriptFacts, true);
 };
 
 var spiceScript = function(cfg, params, script) {
@@ -672,7 +738,20 @@ var spiceScript = function(cfg, params, script) {
     var chance = createChance(params, _script);
     var value = _.get(query, 'values[0]');
     var facts = produceQueryFacts(_script, chance, params.id, value);
-    return facts;
+    var scriptFacts = produceScriptFacts(_script, chance, params.id);
+    return scriptFacts.concat(facts);
+};
+
+
+var asTripleCSV = function(row) {
+    var mergedRow = [row.s, row.p].concat(row.o);
+    var r = mergedRow.join(',');
+    return r;
+};
+
+var asCSVResults = function(results) {
+    var rows = _.map(results, asTripleCSV);
+    return rows.join("\n");
 };
 
 module.exports = function(cfg) {
@@ -727,11 +806,16 @@ module.exports = function(cfg) {
         return parseAndMergeScript().then(localScript);
     };
 
+    var runScriptCsv = function(params) {
+        return runScript(params).then(asCSVResults);
+    };
+
     var fiction = {
         _parseScript: parseScript,
         _parseAndMergeScript: parseAndMergeScript,
         readScriptImports: readScriptImports,
-        runScript: runScript
+        runScript: runScript,
+        runScriptCsv: runScriptCsv
     };
 
     return fiction;

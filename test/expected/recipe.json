@@ -15,13 +15,14 @@
     ]
   },
   "frequency": {
-    "Always": "6",
-    "Usually": "5",
-    "Often": "4",
-    "Sometimes": "3",
-    "Occasionally": "2",
-    "Rarely": "1",
-    "Never": "0"
+    "always": 6,
+    "usually": 5,
+    "often": 4,
+    "sometimes": 3,
+    "occasionally": 2,
+    "rarely": 1,
+    "never": 0,
+    "max": 6
   },
   "models": {
     "secret-spice": {
