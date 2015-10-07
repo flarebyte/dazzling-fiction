@@ -737,15 +737,16 @@ var spiceScript = function(cfg, params, script) {
     var query = extractModelAttribute(" " + params.query);
     var chance = createChance(params, _script);
     var value = _.get(query, 'values[0]');
-    var facts = produceQueryFacts(_script, chance, params.id, value);
+    var queryFacts = produceQueryFacts(_script, chance, params.id, value);
     var scriptFacts = produceScriptFacts(_script, chance, params.id);
-    return scriptFacts.concat(facts);
+    var facts = scriptFacts.concat(queryFacts);
+    return _.uniq(facts);//TODO
 };
 
 
 var asTripleCSV = function(row) {
     var mergedRow = [row.s, row.p].concat(row.o);
-    var r = mergedRow.join(',');
+    var r = S(mergedRow).toCSV();
     return r;
 };
 
