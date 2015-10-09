@@ -58,32 +58,57 @@ var isNotConfigured = function(prog, key) {
 };
 
 function getUserHome() {
-  return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
+    return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
 }
 
 var confMng = confiture({
     name: "conf",
     schema: __dirname + "/schemas/conf.schema.json",
-    baseDirectory: getUserHome(),
+    baseDirectory: "" + getUserHome(),
     relativeDirectory: ".dazzling-fiction"
 });
 
-var conf = {};
+var conf = {
+    state: "origin"
+};
 try {
     conf = confMng.load();
+    conf.state = "loaded";
 } catch (e) {
-    //let's ignore it we are not sure it is has been created
+    conf.state = "failed";
+    conf.error = e;
 }
 
 program
     .version(module.exports.version)
     .description(module.exports.description)
-    .option('-d, --dir [directory]', 'Directory for the script files')
     .option('-f, --script <filename>', 'Fiction script file')
-    .option('-i, --id [prefix]', 'Prefix id for generated facts', 'a')
     .option('-q, --query <statement>', 'Query to evaluate')
+    .option('-d, --dir [directory]', 'Directory for the script files')
+    .option('-i, --id [prefix]', 'Prefix id for generated facts', 'a')
     .option('-o, --output [format]', 'output format', /^(json|csv)$/, 'csv')
+    .option('-z, --reset', 'reset configuration')
     .parse(process.argv);
+
+if (program.reset) {
+    confMng.save({})
+        .on("error", function(e) {
+            process.stderr.write(e + "\n");
+            process.exit(1);
+        });
+    console.log('Writing configuration to ' + JSON.stringify(confMng.configuration()));
+    process.exit(0);
+}
+
+
+if (isNotConfigured(program, 'script')) {
+    process.stderr.write('You need to provide a fiction script file --script\n');
+    process.exit(1);
+}
+if (isNotConfigured(program, 'query')) {
+    process.stderr.write('You need to provide a query to evaluate --query <statement>\n');
+    process.exit(1);
+}
 
 var chunks = [];
 stdin.resume();
@@ -93,18 +118,5 @@ stdin.on('data', function(data) {
 });
 stdin.on('end', function() {
     var text = chunks.join();
-
-    if (isNotConfigured(program, 'dir')) {
-        process.stderr.write('You need to provide a directory --dir [directory]');
-        return;
-    }
-    if (isNotConfigured(program, 'script')) {
-        process.stderr.write('You need to provide a fiction script file --script');
-        return;
-    }
-    if (isNotConfigured(program, 'query')) {
-        process.stderr.write('You need to provide a query to evaluate --query <statement>');
-        return;
-    }
     runScript(program, text, conf.curies);
 });
