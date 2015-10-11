@@ -2,11 +2,11 @@
 var Joi = require('joi');
 var bluePromise = require("bluebird");
 var fs = bluePromise.promisifyAll(require("fs-extra"));
+var httpRequest = bluePromise.promisifyAll(require('request'));
 var marked = require('marked');
 var _ = require('lodash');
 var S = require('string');
 var dazzlingChance = require('dazzling-chance');
-var sync_request = require('sync-request');
 
 var FICTION_SUFFIX = '.fiction.md';
 var YES_NO = 'yes/no';
@@ -505,44 +505,54 @@ var inferChildToStack = function(_script, chance, stk, ref, idx) {
 
 };
 
-var fileListLoader = function(conf, uri, contentType) {
-    if (contentType === 'application/json') {
-        return fs.readJsonSync(uri);
-    } else {
-        var content = fs.readFileSync(uri, {
-            'encoding': 'utf8'
-        });
-        var lines = S(content).parseCSV("\n");
-        return lines;
-    }
+var stringToCSV = function(str) {
+    return S(str).parseCSV("\n");
 };
 
-var webListLoader = function(conf, uri, contentType) {
-    var res = sync_request('GET', uri, {
+var normalizeList = function(list) {
+    var listType = checkListType(list);
+    var nList = listType === 'number' ? _.map(list, toNumber): list;
+    return  {
+        type: listType,
+        list: nList
+    };
+
+};
+
+var UTF8_ENC = {
+    'encoding': 'utf8'
+};
+
+var fileListLoaderAsync = function(v) {
+    var isJson = v.contentType === 'application/json';
+     return isJson ? fs.readJsonAsync(v.path) : fs.readFileAsync(v.path, UTF8_ENC).then(stringToCSV);
+};
+
+var webListLoaderAsync = function(v) {
+    var isJson = v.contentType === 'application/json';
+    var reqConf = {
+        uri: v.path,
         headers: {
-            "accept": contentType
-        }
-    });
-    var body = res.getBody('utf8');
-    if (contentType === 'application/json') {
-        return JSON.parse(body);
-    } else {
-        return S(body).parseCSV("\n");
-    }
+            "accept": v.contentType
+        },
+        json: isJson,
+        encoding: "utf8",
+        timeout: 5000
+    };
+
+    return isJson ? httpRequest.getAsync(reqConf) : httpRequest.getAsync(reqConf).then(stringToCSV);
 };
-var listLoader = function(uri) {
+var listLoaderAsync = function(uri) {
     var hasHttp = S(uri).startsWith('http://') || S(uri).startsWith('https://');
-    if (hasHttp) {
-        return webListLoader;
-    } else {
-        return fileListLoader;
-    }
+    var loader = hasHttp ? webListLoaderAsync : fileListLoaderAsync;
+    return loader.then(normalizeList);
 };
 
-var uncurify = function(_script, uri) {
-    var curies = _script.get('cfg.curies').value();
+var uncurify = function(cfg, uri) {
+    var curies = cfg.curies;
     if (_.size(curies) < 1) {
         return {
+            uri: uri,
             path: uri,
             contentType: 'text/plain'
         };
@@ -554,16 +564,18 @@ var uncurify = function(_script, uri) {
         if (u.startsWith(curie.startsWith)) {
             var path = [curie.prefix, u.chompLeft(curie.startsWith).s, curie.suffix].join('');
             return {
+                uri: uri,
                 path: path,
                 contentType: curie.contentType,
-                loader: listLoader(path)
+                loaderAsync: listLoaderAsync(path)
             };
         }
     }
     return {
+        uri: uri,
         path: uri,
         contentType: 'text/plain',
-        loader: listLoader(uri)
+        loaderAsync: listLoaderAsync(uri)
     };
 };
 
@@ -573,25 +585,39 @@ var resolveList = function(_script, chance, ref) {
     if (hasCommand) {
         var cmd = list.get('command').value();
         var cached = chance.cachedList[cmd];
-        if (_.isObject(cached)) {
-            return luckyInList(chance, cached);
+        if (!_.isObject(cached)) {
+            throw new Error("List should have been cached");
+
         }
-        var uncur = uncurify(_script, cmd);
-        var loadedList = uncur.loader(_script.get('cfg').value(), uncur.path, uncur.contentType);
-        var listType = checkListType(loadedList);
-        if (listType === 'number') {
-            loadedList = _.map(loadedList, toNumber);
-        }
-        var listObj = {
-            type: listType,
-            list: loadedList
-        };
-        chance.cachedList[cmd] = listObj;
-        return luckyInList(chance, listObj);
+        return luckyInList(chance, cached);
     }
 
     return luckyInList(chance, list.value());
 };
+
+var retrieveLists = function(script) {
+    var cmdLists = _.pluck(_.filter(_.values(script.lists),'command'),'command');
+    if (_.isEmpty(cmdLists)) {
+        return script;
+    }
+
+     var uncurifyCmd = function(cmd) {
+        var ucmd= uncurify(script.cfg, cmd);
+        return ucmd;
+    };
+
+    var cmdObjs = _.map(cmdLists,uncurifyCmd);
+
+
+    var loaders = _.map(cmdObjs, function(cmdObj){
+        return cmdObj.loaderAsync(cmdObj).then(function(rList){
+            script[cmdObj.uri].cached=rList;
+        });
+    });
+
+    return bluePromise.all(loaders);
+ };
+
 
 var resolveModelRight = function(_script, chance, facts, stack) {
     var resolveAttrValues = function(values, key) {
@@ -711,7 +737,7 @@ var produceScriptFacts = function(_script, chance, runId) {
         var prefixWithModel = function(m) {
             var id = incCounter(chance);
             var r = {
-                "i": runId+'-'+m + "-" + id,
+                "i": runId + '-' + m + "-" + id,
                 "s": m,
                 "p": "child-of-fiction-model",
                 "o": [
@@ -733,15 +759,23 @@ var spiceScript = function(cfg, params, script) {
         counter: 0
     };
     script.cfg = cfg;
+    script.params = params;
+    return script;
+};
+
+var scriptToFacts = function(script) {
     var _script = _.chain(script);
+    var params = script.params;
     var query = extractModelAttribute(" " + params.query);
     var chance = createChance(params, _script);
     var value = _.get(query, 'values[0]');
     var queryFacts = produceQueryFacts(_script, chance, params.id, value);
     var scriptFacts = produceScriptFacts(_script, chance, params.id);
     var facts = scriptFacts.concat(queryFacts);
-    return _.uniq(facts);//TODO
+    return facts;
 };
+
+
 
 
 var asTripleCSV = function(row) {
@@ -804,7 +838,7 @@ module.exports = function(cfg) {
         var localScript = function(v) {
             return spiceScript(cfg, params, v);
         };
-        return parseAndMergeScript().then(localScript);
+        return parseAndMergeScript().then(localScript).then(retrieveLists).then(scriptToFacts);
     };
 
     var runScriptCsv = function(params) {

@@ -36,8 +36,7 @@
     "marked": "^0.3.5",
     "pkginfo": "^0.3.0",
     "request": "^2.61.0",
-    "string": "^3.3.1",
-    "sync-request": "^2.0.1"
+    "string": "^3.3.1"
   },
   "devDependencies": {
     "chai": "^3.2.0",
