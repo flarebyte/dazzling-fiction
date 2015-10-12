@@ -293,6 +293,21 @@ describe('dazzling-fiction node module', function() {
 
     });
 
+    //Family scripts
+    it('must run the family script for female', function(done) {
+        runFamily(done, "f", "2 of `female`", false);
+    });
+
+    it('must run the family script for male', function(done) {
+        runFamily(done, "f", "2 of `male`", false);
+    });
+
+    it('must run the family script for parent', function(done) {
+        runFamily(done, "f", "3 of `parent`", false);
+    });
+
+    //Recipe scripts
+
     it('must run the recipe script for Dessert', function(done) {
         runRecipe(done, "m", "2 of `Dessert`", false);
     });
@@ -328,19 +343,6 @@ describe('dazzling-fiction node module', function() {
 
     it('must run the recipe script for Secret spice', function(done) {
         runRecipe(done, "m", "2 of `Secret spice`", false);
-    });
-
-    //Family scripts
-    it('must run the family script for female', function(done) {
-        runFamily(done, "f", "2 of `female`", false);
-    });
-
-    it('must run the family script for male', function(done) {
-        runFamily(done, "f", "2 of `male`", false);
-    });
-
-    it('must run the family script for parent', function(done) {
-        runFamily(done, "f", "3 of `parent`", false);
     });
 
 
