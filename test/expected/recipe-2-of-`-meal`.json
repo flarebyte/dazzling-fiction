@@ -187,7 +187,7 @@
     "s": "m-sauce-3-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -245,7 +245,7 @@
     "s": "m-sauce-5-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -356,7 +356,7 @@
     "s": "m-sauce-8-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -410,7 +410,7 @@
     "s": "m-sauce-10-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -474,6 +474,20 @@
     "p": "main-vegetable",
     "o": [
       "m-vegetable-9-1"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "massala"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "coriander"
     ]
   }
 ]

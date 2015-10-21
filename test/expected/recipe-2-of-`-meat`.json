@@ -172,7 +172,7 @@
     "s": "m-sauce-2-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -230,7 +230,7 @@
     "s": "m-sauce-4-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -259,6 +259,20 @@
     "p": "sauce",
     "o": [
       "m-sauce-4-1"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "coriander"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "coriander"
     ]
   }
 ]
