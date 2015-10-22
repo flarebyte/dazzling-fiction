@@ -180,7 +180,7 @@
     "s": "m-sauce-1-1",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -231,7 +231,7 @@
     "s": "m-sauce-2-2",
     "p": "secret",
     "o": [
-      "rel-ref-m-secret"
+      "ref-m-secret"
     ]
   },
   {
@@ -246,6 +246,20 @@
     "p": "spoon-of",
     "o": [
       "armagnac"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "massala"
+    ]
+  },
+  {
+    "s": "ref-m-secret",
+    "p": "ingredient",
+    "o": [
+      "coriander"
     ]
   }
 ]

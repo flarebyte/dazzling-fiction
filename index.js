@@ -489,7 +489,8 @@ var incCounter = function(chance) {
 var inferChildToStack = function(_script, chance, stk, ref, idx) {
     var refType = getRefType(_script, ref);
     var refValue = getRefValue(_script, ref);
-    var name = [stk.root.k, ref, incCounter(chance), idx + 1].join('-');
+    var isReference = stk.parent && TYPE_REF === stk.parent.t;
+    var name = isReference ? ['ref', stk.parent.n].join('-') : [stk.root.k, ref, incCounter(chance), idx + 1].join('-');
     var cloned = {
         refs: stk.refs,
         root: stk.root,
@@ -511,8 +512,8 @@ var stringToCSV = function(str) {
 
 var normalizeList = function(list) {
     var listType = checkListType(list);
-    var nList = listType === 'number' ? _.map(list, toNumber): list;
-    return  {
+    var nList = listType === 'number' ? _.map(list, toNumber) : list;
+    return {
         type: listType,
         list: nList
     };
@@ -525,7 +526,7 @@ var UTF8_ENC = {
 
 var fileListLoaderAsync = function(v) {
     var isJson = v.contentType === 'application/json';
-     return isJson ? fs.readJsonAsync(v.path) : fs.readFileAsync(v.path, UTF8_ENC).then(stringToCSV);
+    return isJson ? fs.readJsonAsync(v.path) : fs.readFileAsync(v.path, UTF8_ENC).then(stringToCSV);
 };
 
 var webListLoaderAsync = function(v) {
@@ -596,27 +597,27 @@ var resolveList = function(_script, chance, ref) {
 };
 
 var retrieveLists = function(script) {
-    var cmdLists = _.pluck(_.filter(_.values(script.lists),'command'),'command');
+    var cmdLists = _.pluck(_.filter(_.values(script.lists), 'command'), 'command');
     if (_.isEmpty(cmdLists)) {
         return script;
     }
 
-     var uncurifyCmd = function(cmd) {
-        var ucmd= uncurify(script.cfg, cmd);
+    var uncurifyCmd = function(cmd) {
+        var ucmd = uncurify(script.cfg, cmd);
         return ucmd;
     };
 
-    var cmdObjs = _.map(cmdLists,uncurifyCmd);
+    var cmdObjs = _.map(cmdLists, uncurifyCmd);
 
 
-    var loaders = _.map(cmdObjs, function(cmdObj){
-        return cmdObj.loaderAsync(cmdObj).then(function(rList){
-            script[cmdObj.uri].cached=rList;
+    var loaders = _.map(cmdObjs, function(cmdObj) {
+        return cmdObj.loaderAsync(cmdObj).then(function(rList) {
+            script[cmdObj.uri].cached = rList;
         });
     });
 
     return bluePromise.all(loaders);
- };
+};
 
 
 var resolveModelRight = function(_script, chance, facts, stack) {
@@ -636,8 +637,9 @@ var resolveModelRight = function(_script, chance, facts, stack) {
                             facts.push(modelRight);
                             return modelStack.child.n;
                         } else if (li.t === TYPE_REF) {
-                            var relRefName = ['rel', li.t, stack.root.k, li.v].join('-').toLowerCase();
+                            var relRefName = [li.t, stack.root.k, li.v].join('-').toLowerCase();
                             stack.refs[li.v] = relRefName;
+                            chance.refsToResolve[li.v] = 'Y';
                             return relRefName;
                         } else if (li.t === TYPE_LIST) {
                             return resolveList(_script, chance, li.v);
@@ -707,6 +709,43 @@ var produceQueryFacts = function(_script, chance, id, value) {
 
 };
 
+var produceRefsFacts = function(_script, chance, runId) {
+    var refs = _.keys(chance.refsToResolve);
+    if (_.isEmpty(refs)) {
+        return [];
+    }
+
+    var resolveRefStack = function(refId) {
+        var value = _script.get(['refs', refId]).value();
+        if (TYPE_REF !== getValueType(value)) {
+            throw new Error("The ref should contain a reference: " + refId);
+        }
+        var ref = _.get(value, 'value.ref');
+        var id = [runId, refId].join('-'); //TODO iterate on all
+
+        var stack = {
+            refs: {},
+            root: {
+                k: id,
+                v: value,
+                t: TYPE_REF,
+                n: id
+            },
+            parent: {
+                k: id,
+                v: value,
+                t: TYPE_REF,
+                n: id
+            },
+        };
+        var newStack = inferChildToStack(_script, chance, stack, ref);
+        return resolveStack(_script, chance, [], newStack);
+    };
+    var r = _.map(refs,resolveRefStack);
+
+    return _.flatten(r, true);
+
+};
 
 var toChanceWeighting = function(keyValues) {
     return {
@@ -728,6 +767,7 @@ var createChance = function(params, _script) {
     var chance = dazzlingChance(chanceConf);
     chance.counter = 0;
     chance.cachedList = {};
+    chance.refsToResolve = {};
     return chance;
 
 };
@@ -771,7 +811,8 @@ var scriptToFacts = function(script) {
     var value = _.get(query, 'values[0]');
     var queryFacts = produceQueryFacts(_script, chance, params.id, value);
     var scriptFacts = produceScriptFacts(_script, chance, params.id);
-    var facts = scriptFacts.concat(queryFacts);
+    var refFacts = produceRefsFacts(_script, chance, params.id);
+    var facts = scriptFacts.concat(queryFacts,refFacts);
     return facts;
 };
 
