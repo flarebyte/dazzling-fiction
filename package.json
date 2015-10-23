@@ -28,9 +28,9 @@
   "dependencies": {
     "bluebird": "^2.9.34",
     "commander": "^2.8.1",
-    "confiture": "^0.1.0",
+    "confiture": "^0.1.1",
     "dazzling-chance": "^0.1.0",
-    "fs-extra": "^0.23.1",
+    "fs-extra": "^0.24",
     "joi": "^6.6.1",
     "json-commander": "^0.2.0",
     "lodash": "^3.10.1",
@@ -41,7 +41,6 @@
   },
   "devDependencies": {
     "chai": "^3.2.0",
-    "fs-extra": "^0.23.1",
     "grunt-bump": "^0.3.1",
     "grunt-cli": "^0.1.13",
     "grunt-contrib-jshint": "^0.10.0",
