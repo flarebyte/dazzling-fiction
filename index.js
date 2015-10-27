@@ -520,6 +520,10 @@ var normalizeList = function(list) {
 
 };
 
+var justBody = function(resp) {
+    return _.chain(resp).first().get('body').value();
+};
+
 var UTF8_ENC = {
     'encoding': 'utf8'
 };
@@ -541,11 +545,13 @@ var webListLoaderAsync = function(v) {
         timeout: 5000
     };
 
-    return isJson ? httpRequest.getAsync(reqConf) : httpRequest.getAsync(reqConf).then(stringToCSV);
+
+
+    return isJson ? httpRequest.getAsync(reqConf).then(justBody) : httpRequest.getAsync(reqConf).then(justBody).then(stringToCSV);
 };
-var listLoaderAsync = function(uri) {
-    var hasHttp = S(uri).startsWith('http://') || S(uri).startsWith('https://');
-    var loader = hasHttp ? webListLoaderAsync : fileListLoaderAsync;
+var listLoaderAsync = function(v) {
+    var hasHttp = S(v.path).startsWith('http://') || S(v.path).startsWith('https://');
+    var loader = hasHttp ? webListLoaderAsync(v) : fileListLoaderAsync(v);
     return loader.then(normalizeList);
 };
 
@@ -567,8 +573,8 @@ var uncurify = function(cfg, uri) {
             return {
                 uri: uri,
                 path: path,
-                contentType: curie.contentType,
-                loaderAsync: listLoaderAsync(path)
+                contentType: curie.contentType
+                //loaderAsync: listLoaderAsync(path)
             };
         }
     }
@@ -576,7 +582,7 @@ var uncurify = function(cfg, uri) {
         uri: uri,
         path: uri,
         contentType: 'text/plain',
-        loaderAsync: listLoaderAsync(uri)
+        //loaderAsync: listLoaderAsync(uri)
     };
 };
 
@@ -585,7 +591,7 @@ var resolveList = function(_script, chance, ref) {
     var hasCommand = list.has('command').value();
     if (hasCommand) {
         var cmd = list.get('command').value();
-        var cached = chance.cachedList[cmd];
+        var cached = _script.get(['cachedList', cmd]).value();
         if (!_.isObject(cached)) {
             throw new Error("List should have been cached");
 
@@ -611,12 +617,16 @@ var retrieveLists = function(script) {
 
 
     var loaders = _.map(cmdObjs, function(cmdObj) {
-        return cmdObj.loaderAsync(cmdObj).then(function(rList) {
-            script[cmdObj.uri].cached = rList;
+        return listLoaderAsync(cmdObj).then(function(rList) {
+            script.cachedList[cmdObj.uri] = rList;
         });
     });
 
-    return bluePromise.all(loaders);
+    var passScript = function() {
+        return script;
+    };
+
+    return bluePromise.all(loaders).then(passScript);
 };
 
 
@@ -741,7 +751,7 @@ var produceRefsFacts = function(_script, chance, runId) {
         var newStack = inferChildToStack(_script, chance, stack, ref);
         return resolveStack(_script, chance, [], newStack);
     };
-    var r = _.map(refs,resolveRefStack);
+    var r = _.map(refs, resolveRefStack);
 
     return _.flatten(r, true);
 
@@ -798,6 +808,7 @@ var spiceScript = function(cfg, params, script) {
     script.state = {
         counter: 0
     };
+    script.cachedList = {};
     script.cfg = cfg;
     script.params = params;
     return script;
@@ -812,7 +823,7 @@ var scriptToFacts = function(script) {
     var queryFacts = produceQueryFacts(_script, chance, params.id, value);
     var scriptFacts = produceScriptFacts(_script, chance, params.id);
     var refFacts = produceRefsFacts(_script, chance, params.id);
-    var facts = scriptFacts.concat(queryFacts,refFacts);
+    var facts = scriptFacts.concat(queryFacts, refFacts);
     return facts;
 };
 

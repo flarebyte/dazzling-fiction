@@ -4,7 +4,8 @@ var fs = require('fs-extra');
 var assert = require('chai').assert;
 var S = require('string');
 var dazzlingFiction = require('../');
-var PORT = 8124;
+var nock = require('nock');
+var LIST_SERVER = 'http://list.flarebyte.com';
 
 var othello = fs.readFileSync('test/fixtures/othello.txt').toString();
 //var macbeth = fs.readFileSync('test/fixtures/macbeth.txt').toString();
@@ -15,7 +16,6 @@ var jsonFamily = fs.readJsonSync('test/expected/family.json');
 var jsonMergeRecipe = fs.readJsonSync('test/expected/merge-recipe.json');
 var jsonMergeFamily = fs.readJsonSync('test/expected/merge-family.json');
 
-var listServerOff = true;
 var forceRecipe = false;
 var forceFamily = false;
 
@@ -91,13 +91,13 @@ var createFamilyFict = function() {
         script: 'family',
         curies: [{
             startsWith: "web:",
-            prefix: "http://localhost:" + PORT + "/",
+            prefix: LIST_SERVER + "/",
             suffix: ".txt",
             contentType: "text/plain"
 
         }, {
             startsWith: "json-web:",
-            prefix: "http://localhost:" + PORT + "/",
+            prefix: LIST_SERVER + "/",
             suffix: ".json",
             contentType: "application/json"
 
@@ -117,11 +117,15 @@ var createFamilyFict = function() {
 };
 
 var runFamily = function(done, id, query, force) {
-    if (listServerOff) {
-        done();
-        return;
-    }
-    
+
+    var listServer1 = nock(LIST_SERVER)
+    .get('/code-name.json')
+    .reply(200, ["honey", "sweety", "007", "047", "033"]);
+    var listServer2 = nock(LIST_SERVER)
+    .get('/common-name.txt')
+    .reply(200, "smith\nkeaton\ndupont\nbaker\nbutcher");
+
+
     var fiction = createFamilyFict();
     var filename = 'test/expected/family-' + S(query).dasherize().s + '.json';
     if (!force) {
@@ -133,7 +137,8 @@ var runFamily = function(done, id, query, force) {
         query: query,
         text: othello
     }).then(function(results) {
-
+        assert.isNotNull(listServer1);
+        assert.isNotNull(listServer2);
         if (force) {
             console.log("Creating file: " + filename);
             fs.writeJsonSync(filename, results);
