@@ -15,6 +15,7 @@ var TYPE_MODEL = "MODEL";
 var TYPE_WEIGHTING = "WEIGHTING";
 //var TYPE_BOOLEAN = "BOOLEAN";
 var TYPE_LIST = "LIST";
+var TYPE_MAPPING = "MAPPING";
 var TYPE_QUANTITY = "QTY";
 var TYPE_UNKNOWN = "UNKNOWN";
 
@@ -44,6 +45,21 @@ var extractValue = function(value) {
     return S(value).chompLeft('**').between('**');
 };
 
+var extractBeforeColon = function(value) {
+    var svalue = S(value);
+    if (!svalue.contains(':')) {
+        return null;
+    }
+    return svalue.between('', ':').s;
+};
+
+var extractAfterColon = function(value) {
+    var svalue = S(value);
+    if (!svalue.contains(':')) {
+        return null;
+    }
+    return svalue.between(':').s;
+};
 
 var asName = function(svalue) {
     if (svalue.contains(':')) {
@@ -242,6 +258,18 @@ var parseLists = function(value) {
     }
 };
 
+var parseMappings = function(value) {
+    var command = extractCommand(value);
+    if (!command.found) {
+        throw new Error("Mappings should be a reference to a file");
+    }
+    return {
+        command: command.extracted.s
+    };
+
+};
+
+
 var extractModelAttribute = function(value) {
     var attrValue = extractValue(value).parseCSV(';');
     Joi.assert(attrValue, Joi.array().min(1));
@@ -263,6 +291,7 @@ var md2obj = function(tokens) {
         frequency: {},
         models: {},
         lists: {},
+        mappings: {},
         refs: {}
     };
     var length = tokens.length;
@@ -308,6 +337,12 @@ var md2obj = function(tokens) {
             if (isLists) {
                 r.lists[asName(extractKey(token.text))] = parseLists(extractValue(token.text).s);
             }
+
+            var isMappings = (section === 'mappings') && isNotEmptyText;
+            if (isMappings) {
+                r.mappings[asName(extractKey(token.text))] = parseMappings(extractValue(token.text).s);
+            }
+
             var isModelAttribute = (section === 'models') && isNotEmptyText;
             if (isModelAttribute) {
                 var modelAttrName = asName(extractKey(token.text));
@@ -375,6 +410,7 @@ var mergeScripts = function(scripts) {
         frequency: _scripts.pluck('frequency').reduceRight(mergeObjs).value(),
         models: _scripts.pluck('models').reduceRight(mergeObjs).value(),
         lists: _scripts.pluck('lists').reduceRight(mergeObjs).value(),
+        mappings: _scripts.pluck('mappings').reduceRight(mergeObjs).value(),
         refs: _scripts.pluck('refs').reduceRight(mergeObjs).value()
     };
 
@@ -387,6 +423,7 @@ var getValueType = function(value) {
 };
 
 var getRefType = function(_script, ref) {
+    var refPrefix = extractBeforeColon(ref);
     if (_script.has(['models', ref]).value()) {
         return TYPE_MODEL;
     } else if (_script.has(['refs', ref]).value()) {
@@ -397,6 +434,8 @@ var getRefType = function(_script, ref) {
         return TYPE_LIST;
     } else if (_script.has(['weighting', ref]).value()) {
         return TYPE_WEIGHTING;
+    } else if (_script.has(['mappings', refPrefix]).value()) {
+        return TYPE_MAPPING;
     } else {
         return TYPE_UNKNOWN;
     }
@@ -411,6 +450,10 @@ var getRefValue = function(_script, ref) {
             return _script.get(['models', ref]).value();
         case TYPE_LIST:
             return _script.get(['lists', ref]).value();
+        case TYPE_MAPPING:
+            var map = extractBeforeColon(ref);
+            var key = extractAfterColon(ref);
+            return _script.get(['mappings', map, key]).value();
         case TYPE_WEIGHTING:
             return _script.get(['.weighting', ref]).value();
         default:
@@ -555,6 +598,12 @@ var listLoaderAsync = function(v) {
     return loader.then(normalizeList);
 };
 
+var mappingLoaderAsync = function(v) {
+    var hasHttp = S(v.path).startsWith('http://') || S(v.path).startsWith('https://');
+    var loader = hasHttp ? webListLoaderAsync(v) : fileListLoaderAsync(v);
+    return loader;
+};
+
 var uncurify = function(cfg, uri) {
     var curies = cfg.curies;
     if (_.size(curies) < 1) {
@@ -602,6 +651,24 @@ var resolveList = function(_script, chance, ref) {
     return luckyInList(chance, list.value());
 };
 
+var resolveMapping = function(_script, chance, ref) {
+    var map = extractBeforeColon(ref);
+    var key = extractAfterColon(ref);
+    var mapping = _script.get(['mappings', map]);
+    var hasCommand = mapping.has('command').value();
+    if (!hasCommand) {
+        throw new Error("Mapping should reference a file");
+    }
+    var cmd = mapping.get('command').value();
+    var cached = _script.get(['cachedMapping', cmd]).value();
+    if (!_.isObject(cached)) {
+        throw new Error("Mapping should have been cached");
+
+    }
+    return cached[key];
+
+};
+
 var retrieveLists = function(script) {
     var cmdLists = _.pluck(_.filter(_.values(script.lists), 'command'), 'command');
     if (_.isEmpty(cmdLists)) {
@@ -619,6 +686,33 @@ var retrieveLists = function(script) {
     var loaders = _.map(cmdObjs, function(cmdObj) {
         return listLoaderAsync(cmdObj).then(function(rList) {
             script.cachedList[cmdObj.uri] = rList;
+        });
+    });
+
+    var passScript = function() {
+        return script;
+    };
+
+    return bluePromise.all(loaders).then(passScript);
+};
+
+var retrieveMappings = function(script) {
+    var cmdMappings = _.pluck(_.filter(_.values(script.mappings), 'command'), 'command');
+    if (_.isEmpty(cmdMappings)) {
+        return script;
+    }
+
+    var uncurifyCmd = function(cmd) {
+        var ucmd = uncurify(script.cfg, cmd);
+        return ucmd;
+    };
+
+    var cmdObjs = _.map(cmdMappings, uncurifyCmd);
+
+
+    var loaders = _.map(cmdObjs, function(cmdObj) {
+        return mappingLoaderAsync(cmdObj).then(function(rMapping) {
+            script.cachedMapping[cmdObj.uri] = rMapping;
         });
     });
 
@@ -653,8 +747,10 @@ var resolveModelRight = function(_script, chance, facts, stack) {
                             return relRefName;
                         } else if (li.t === TYPE_LIST) {
                             return resolveList(_script, chance, li.v);
+                        } else if (li.t === TYPE_MAPPING) {
+                            return resolveMapping(_script, chance, li.v);
                         } else {
-                            throw new Error("Should not be here: " + stack);
+                            throw new Error("Should not be here: " + JSON.stringify(stack));
                         }
                     } else {
                         return li;
@@ -776,7 +872,6 @@ var createChance = function(params, _script) {
     };
     var chance = dazzlingChance(chanceConf);
     chance.counter = 0;
-    chance.cachedList = {};
     chance.refsToResolve = {};
     return chance;
 
@@ -809,6 +904,7 @@ var spiceScript = function(cfg, params, script) {
         counter: 0
     };
     script.cachedList = {};
+    script.cachedMapping = {};
     script.cfg = cfg;
     script.params = params;
     return script;
@@ -828,10 +924,13 @@ var scriptToFacts = function(script) {
 };
 
 
-
+var asCSVColumn = function(value) {
+    return _.isObject(value) ? "@json@" + JSON.stringify(value) : value;
+};
 
 var asTripleCSV = function(row) {
-    var mergedRow = [row.s, row.p].concat(row.o);
+    var o = _.map(row.o, asCSVColumn);
+    var mergedRow = [row.s, row.p].concat(o);
     var r = S(mergedRow).toCSV();
     return r;
 };
@@ -890,7 +989,11 @@ module.exports = function(cfg) {
         var localScript = function(v) {
             return spiceScript(cfg, params, v);
         };
-        return parseAndMergeScript().then(localScript).then(retrieveLists).then(scriptToFacts);
+        return parseAndMergeScript()
+            .then(localScript)
+            .then(retrieveLists)
+            .then(retrieveMappings)
+            .then(scriptToFacts);
     };
 
     var runScriptCsv = function(params) {

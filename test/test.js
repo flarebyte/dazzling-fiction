@@ -117,13 +117,18 @@ var createFamilyFict = function() {
 };
 
 var runFamily = function(done, id, query, force) {
-
     var listServer1 = nock(LIST_SERVER)
-    .get('/code-name.json')
-    .reply(200, ["honey", "sweety", "007", "047", "033"]);
+        .get('/code-name.json')
+        .reply(200, ["honey", "sweety", "007", "047", "033"]);
     var listServer2 = nock(LIST_SERVER)
-    .get('/common-name.txt')
-    .reply(200, "smith\nkeaton\ndupont\nbaker\nbutcher");
+        .get('/common-name.txt')
+        .reply(200, "smith\nkeaton\ndupont\nbaker\nbutcher");
+    var listServer3 = nock(LIST_SERVER)
+        .get('/sex.json')
+        .reply(200, {
+            M: "male",
+            F: "female"
+        });
 
 
     var fiction = createFamilyFict();
@@ -139,9 +144,12 @@ var runFamily = function(done, id, query, force) {
     }).then(function(results) {
         assert.isNotNull(listServer1);
         assert.isNotNull(listServer2);
+        assert.isNotNull(listServer3);
         if (force) {
             console.log("Creating file: " + filename);
-            fs.writeJsonSync(filename, results);
+            fs.writeJsonSync(filename, results, {
+                'encoding': 'utf8'
+            });
         } else {
             assert.deepEqual(results, expectedJson);
         }
@@ -153,6 +161,50 @@ var runFamily = function(done, id, query, force) {
 
 };
 
+var runFamilyCsv = function(done, id, query, force) {
+    var listServer1 = nock(LIST_SERVER)
+        .get('/code-name.json')
+        .reply(200, ["honey", "sweety", "007", "047", "033"]);
+    var listServer2 = nock(LIST_SERVER)
+        .get('/common-name.txt')
+        .reply(200, "smith\nkeaton\ndupont\nbaker\nbutcher");
+    var listServer3 = nock(LIST_SERVER)
+        .get('/sex.json')
+        .reply(200, {
+            M: "male",
+            F: "female"
+        });
+
+
+    var fiction = createFamilyFict();
+    var filename = 'test/expected/family-' + S(query).dasherize().s + '.csv';
+    if (!force) {
+        var expectedJson = fs.readFileSync(filename, {
+            'encoding': 'utf8'
+        });
+    }
+
+    fiction.runScriptCsv({
+        id: id,
+        query: query,
+        text: othello
+    }).then(function(results) {
+        assert.isNotNull(listServer1);
+        assert.isNotNull(listServer2);
+        assert.isNotNull(listServer3);
+        if (force) {
+            console.log("Creating file: " + filename);
+            fs.writeFileSync(filename, results);
+        } else {
+            assert.deepEqual(results, expectedJson);
+        }
+    }).then(function() {
+        done();
+    }).catch(function(e) {
+        done(e);
+    });
+
+};
 describe('dazzling-fiction node module', function() {
     it('must read imports from script', function(done) {
         var fiction = dazzlingFiction({
@@ -310,6 +362,11 @@ describe('dazzling-fiction node module', function() {
     it('must run the family script for parent', function(done) {
         runFamily(done, "f", "3 of `parent`", false);
     });
+
+    it('must run the family script for male', function(done) {
+        runFamilyCsv(done, "f", "2 of `female`", false);
+    });
+
 
     //Recipe scripts
 

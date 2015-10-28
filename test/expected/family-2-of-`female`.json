@@ -89,7 +89,13 @@
     "s": "f-female-1-1",
     "p": "sex",
     "o": [
-      "female"
+      "female",
+      [
+        "Doctor",
+        {
+          "fr": "Docteur"
+        }
+      ]
     ]
   },
   {
@@ -110,7 +116,13 @@
     "s": "f-female-2-2",
     "p": "sex",
     "o": [
-      "female"
+      "female",
+      [
+        "Doctor",
+        {
+          "fr": "Docteur"
+        }
+      ]
     ]
   }
 ]
