@@ -87,12 +87,20 @@
                 "max": 1
               },
               "value": {
-                "type": "string",
-                "list": [
-                  "male"
-                ]
+                "ref": "sex:M"
               },
-              "raw": "*male*"
+              "raw": "`sex:M`"
+            },
+            {
+              "quantity": {
+                "type": "int",
+                "min": 1,
+                "max": 1
+              },
+              "value": {
+                "ref": "title:mr"
+              },
+              "raw": "`title:mr`"
             }
           ]
         }
@@ -152,6 +160,17 @@
                 ]
               },
               "raw": "*female*"
+            },
+            {
+              "quantity": {
+                "type": "int",
+                "min": 1,
+                "max": 1
+              },
+              "value": {
+                "ref": "title:dr"
+              },
+              "raw": "`title:dr`"
             }
           ]
         }
@@ -208,6 +227,14 @@
     },
     "code-name": {
       "command": "json-web:code-name"
+    }
+  },
+  "mappings": {
+    "title": {
+      "command": "json-file:title"
+    },
+    "sex": {
+      "command": "json-web:sex"
     }
   },
   "refs": {

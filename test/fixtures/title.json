@@ -1,0 +1,6 @@
+{
+	"sr": "Sir",
+	"mr": "Mister",
+	"mrs": "Mistress",
+	"dr": ["Doctor",{"fr": "Docteur"}]
+}

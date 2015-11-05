@@ -18,6 +18,11 @@
 
 * **code name**  `json-web:code-name`
 
+## Mappings
+
+* **title** `json-file:title`
+* **sex** `json-web:sex`
+
 ## Models
 
 ### Male
@@ -25,13 +30,13 @@
 * **first name** `male first name`
 * **last name** always; 1 of `common last name`
 * **code name** always; 1 of `code name`
-* **sex** *male*
+* **sex** `sex:M`; `title:mr`
 
 ### Female
 
 * **first name** `female first name`
 * **last name** always; 1 of `common last name`
-* **sex** *female*
+* **sex** *female*; `title:dr`
 
 
 ### Parent
