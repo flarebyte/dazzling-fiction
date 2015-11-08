@@ -495,16 +495,28 @@ var luckyFrequency = function(_script, chance, value) {
     return (luck <= freq);
 };
 
-var luckyInList = function(chance, value) {
+var luckyInList = function(chance, value, ownerId, predicate) {
     var hasSingleItem = _.size(value.list) === 1;
     if (hasSingleItem) {
         return _.chain(value).get('list').first().value();
     } else {
-        return chance.next(value);
+        var isNotWordList = _.isUndefined(value.list);
+        if (isNotWordList) {
+            return chance.next(value);
+        }
+
+        var cloned = _.cloneDeep(value);
+        var cacheId = [ownerId, predicate].join('||');
+        var reducedList = _.get(chance, ['statefulLists', cacheId], value.list);
+        cloned.list = reducedList;
+        var item = chance.next(cloned);
+        var listWithoutItem = _.pull(reducedList, item);
+        chance.statefulLists[cacheId] = _.isEmpty(listWithoutItem) ? value.list : listWithoutItem;
+        return item;
     }
 };
 
-var luckyDirectIndex = function(_script, chance, value) {
+var luckyDirectIndex = function(_script, chance, value, ownerId, predicate) {
     var hasRefValue = _.has(value, 'value.ref');
     if (hasRefValue) {
         var ref = value.value.ref;
@@ -521,7 +533,7 @@ var luckyDirectIndex = function(_script, chance, value) {
         luck.weight = weightingRefs[0];
     }
 
-    return luckyInList(chance, luck);
+    return luckyInList(chance, luck, ownerId, predicate);
 };
 
 var incCounter = function(chance) {
@@ -635,7 +647,7 @@ var uncurify = function(cfg, uri) {
     };
 };
 
-var resolveList = function(_script, chance, ref) {
+var resolveList = function(_script, chance, ref, ownerId, predicate) {
     var list = _script.get(['lists', ref]);
     var hasCommand = list.has('command').value();
     if (hasCommand) {
@@ -645,10 +657,10 @@ var resolveList = function(_script, chance, ref) {
             throw new Error("List should have been cached");
 
         }
-        return luckyInList(chance, cached);
+        return luckyInList(chance, cached, ownerId, predicate);
     }
 
-    return luckyInList(chance, list.value());
+    return luckyInList(chance, list.value(), ownerId, predicate);
 };
 
 var resolveMapping = function(_script, chance, ref) {
@@ -732,7 +744,7 @@ var resolveModelRight = function(_script, chance, facts, stack) {
             var attrQuantity = (noValue || notWished) ? 1 : luckyQuantity(_script, chance, _.chain(value).get('values').first().value());
             var resolveOneAttr = function(oneAttrIdx) {
                 var resolveOneColumn = function(colValue) {
-                    var li = luckyDirectIndex(_script, chance, colValue);
+                    var li = luckyDirectIndex(_script, chance, colValue, stack.child.n, key);
                     var isRef = _.has(li, 'v');
                     if (isRef) {
                         if (li.t === TYPE_MODEL) {
@@ -746,7 +758,7 @@ var resolveModelRight = function(_script, chance, facts, stack) {
                             chance.refsToResolve[li.v] = 'Y';
                             return relRefName;
                         } else if (li.t === TYPE_LIST) {
-                            return resolveList(_script, chance, li.v);
+                            return resolveList(_script, chance, li.v, stack.child.n, key);
                         } else if (li.t === TYPE_MAPPING) {
                             return resolveMapping(_script, chance, li.v);
                         } else {
@@ -873,6 +885,7 @@ var createChance = function(params, _script) {
     var chance = dazzlingChance(chanceConf);
     chance.counter = 0;
     chance.refsToResolve = {};
+    chance.statefulLists = {};
     return chance;
 
 };
