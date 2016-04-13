@@ -1,122 +1,134 @@
 #!/usr/bin/env node
 
 'use strict';
-var program = require('commander');
 var dazzlingFiction = require('./');
+var fs = require('fs');
+var program = require('commander');
 var _ = require('lodash');
 var S = require('string');
 var confiture = require('confiture');
+var solaceCreator = require('solace');
+var jsonCommander = require('json-commander');
+var getStdin = require('get-stdin');
+
 require('pkginfo')(module);
-var stdin = process.stdin;
 
-
-var runScript = function(prog, text, curies) {
-    var scriptFolder = S(process.cwd()).ensureRight('/').s;
-    if (prog.dir) {
-        var isAbsoluteDir = S(prog.dir).startsWith('/');
-        scriptFolder = isAbsoluteDir ? S(prog.dir) : S(process.cwd()).ensureRight('/').s + prog.dir;
-        scriptFolder = S(scriptFolder).ensureRight('/').s;
-    }
-    var fictionConfig = {
-        scriptFolder: scriptFolder,
-        script: prog.script
-    };
-
-    if (_.isArray(curies)) {
-        fictionConfig.curies = curies;
-    }
-
-    var params = {
-        id: prog.id,
-        query: prog.query,
-        text: text
-    };
-
-
-    var fiction = dazzlingFiction(fictionConfig);
-    var runner = function() {
-        if (prog.output === 'json') {
-            return fiction.runScript(params);
-        } else if (prog.output === 'csv') {
-            return fiction.runScriptCsv(params);
-        } else {
-            return fiction.runScriptCsv(params);
-        }
-    };
-
-    runner().then(function(results) {
-        console.log(results);
-    }).catch(function(e) {
-        console.log(e);
-    });
-
-};
-
-var isNotConfigured = function(prog, key) {
-    var value = prog[key];
-    return !_.isString(value);
-};
+var solace = solaceCreator({
+  defaultTheme: 'outline'
+});
 
 function getUserHome() {
     return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
 }
 
-var confMng = confiture({
+var fileExists = function(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch (err) {
+    return false;
+  }
+};
+
+var confJsonSchema = __dirname + "/schemas/conf.schema.json";
+
+var configurator = confiture({
     name: "conf",
-    schema: __dirname + "/schemas/conf.schema.json",
+    schema: confJsonSchema,
     baseDirectory: "" + getUserHome(),
     relativeDirectory: ".dazzling-fiction"
 });
 
-var conf = {
-    state: "origin"
-};
-try {
-    conf = confMng.load();
-    conf.state = "loaded";
-} catch (e) {
-    conf.state = "failed";
-    conf.error = e;
+var confFilePath = configurator.configuration().filepath;
+var confFileExists = fileExists(confFilePath);
+
+var cmdr = jsonCommander({
+  schema: confJsonSchema,
+  tableFriendly: true
+});
+
+var conf = confFileExists ? configurator.load() : {};
+if (_.isError(conf)){
+    solace.log(conf);
+    process.exit(1);
 }
+var unalteredConf = _.cloneDeep(conf);
+
+var setupProgram = function(cmd, other) {
+    solace = solaceCreator({defaultTheme: 'outline'});
+    var hasOther = !_.isEmpty(other);
+    var cmdOptions = hasOther ? [cmd].concat(other) : [cmd];
+    var isWriting = cmd === 'set' || cmd === 'copy' || cmd === 'del' || cmd === 'insert';
+    if (isWriting) {
+      cmdr.evaluate(unalteredConf, cmdOptions);
+      configurator.saveSync(unalteredConf);
+      solace.log(cmd + ' done.');
+    } else {
+      var evaluation = cmdr.evaluate(unalteredConf, cmdOptions);
+      solace.log(evaluation);
+    }
+  };
+
+var runScript = function(prog, query, scriptName, directory, text, cfg) {
+
+    var scriptFolder = S(process.cwd()).ensureRight('/').s;
+    if (directory) {
+        var isAbsoluteDir = S(directory).startsWith('/');
+        scriptFolder = isAbsoluteDir ? S(directory) : S(process.cwd()).ensureRight('/').s + directory;
+        scriptFolder = S(scriptFolder).ensureRight('/').s;
+    }
+    var fictionConfig = {
+        scriptFolder: scriptFolder,
+        script: scriptName
+    };
+
+    if (_.isArray(cfg.curies)) {
+        fictionConfig.curies = cfg.curies;
+    }
+
+    var params = {
+        id: prog.id,
+        query: query,
+        text: text
+    };
+
+    var outputFmt = prog.output ? prog.output : conf.outputFormat ? conf.outputFormat : 'csv';
+    var printFmt = prog.print ? prog.print : conf.print ? conf.print : 'outline';
+    solace = solaceCreator({defaultTheme: printFmt});
+
+    var fiction = dazzlingFiction(fictionConfig);
+    var runner = function() {
+        return outputFmt === 'json' ? fiction.runScript(params) : fiction.runScriptCsv(params);
+    };
+
+    runner().then(function(results) {
+        solace.log(results);
+    }).catch(function(e) {
+        solace.log(e);
+    });
+
+};
+
+var runScriptCommand = function(query, scriptName, directory) {
+  getStdin().then(function(text)  {
+    runScript(program, query, scriptName, directory, text, conf);
+  });
+};
 
 program
-    .version(module.exports.version)
-    .description(module.exports.description)
-    .option('-f, --script <filename>', 'Fiction script file')
-    .option('-q, --query <statement>', 'Query to evaluate')
-    .option('-d, --dir [directory]', 'Directory for the script files')
-    .option('-i, --id [prefix]', 'Prefix id for generated facts', 'a')
-    .option('-o, --output [format]', 'output format', /^(json|csv)$/, 'csv')
-    .option('-z, --reset', 'reset configuration')
-    .parse(process.argv);
+  .description(module.exports.description)
+  .version(module.exports.version)
+  .option('-i, --id [prefix]', 'Prefix id for generated facts', 'a')
+  .option('-o, --output [format]', 'output format', /^(json|csv)$/)
+  .option('-p, --print [format]', 'print format', /^(outline|beautiful|machine)$/);
 
-if (program.reset) {
-    confMng.save({})
-        .on("error", function(e) {
-            process.stderr.write(e + "\n");
-            process.exit(1);
-        });
-    console.log('Writing configuration to ' + JSON.stringify(confMng.configuration()));
-    process.exit(0);
-}
+program
+  .command('run <query> <scriptName> <directory>')
+    .description('run the fiction script')
+    .action(runScriptCommand);
 
+program
+  .command('setup <cmd> [other...]')
+    .description('configure fiction')
+    .action(setupProgram);
 
-if (isNotConfigured(program, 'script')) {
-    process.stderr.write('You need to provide a fiction script file --script\n');
-    process.exit(1);
-}
-if (isNotConfigured(program, 'query')) {
-    process.stderr.write('You need to provide a query to evaluate --query <statement>\n');
-    process.exit(1);
-}
-
-var chunks = [];
-stdin.resume();
-stdin.setEncoding('utf8');
-stdin.on('data', function(data) {
-    chunks.push(data);
-});
-stdin.on('end', function() {
-    var text = chunks.join();
-    runScript(program, text, conf.curies);
-});
+program.parse(process.argv);

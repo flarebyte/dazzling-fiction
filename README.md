@@ -27,7 +27,7 @@ $ fict --help
 
 ### Generate CSV
 ```
-cat LICENSE | fict -d "test/fixtures" -f recipe -q '2 of `Vegetable`'
+cat LICENSE |  fict run '2 of `Vegetable`' recipe "test/fixtures"
 ```
 
 Will output:
@@ -65,8 +65,12 @@ a-vegetable-2-2,sauce,a-sauce-3-1
 
 ### Generate JSON
 ```
-cat LICENSE | fict -d "test/fixtures" -f recipe -q '2 of `Vegetable`' -o json
+cat LICENSE |  fict run '2 of `Vegetable`' recipe "test/fixtures" -o json -p beautiful
 ```
+Concerning the optional parameter -p or --print:
+* machine: Format the output in a compact manner easily readable by a machine.
+* beautiful: Format the output in a beautiful manner.
+* outline: Format the output with the main outlines.
 
 Will output
 
@@ -153,6 +157,129 @@ Will output
   { s: 'a-sauce-3-1', p: 'spoon-of', o: [ 'armagnac' ] },
   { s: 'a-vegetable-2-2', p: 'vegetable-mix', o: [ 'carrot' ] },
   { s: 'a-vegetable-2-2', p: 'sauce', o: [ 'a-sauce-3-1' ] } ]
+```
+
+## Features of the fiction dialect
+
+The fiction dialect supports the following features:
+ * Import
+ * Weighting
+ * Frequency
+ * Models and references
+ * Lists
+ * Mappings
+
+### Import
+
+The fiction dialect allow a fiction script to reference another.
+
+Example:
+```
+## Import
+
+* another-script
+* more-script
+
+```
+
+### Weighting
+
+Weighting allows to introduce a bias to favor some values against others.
+
+Example of declaration:
+```
+## Weighting
+
+* ** experimental **  1,2,4,8,16
+```
+
+### Frequency
+
+The frequency allows to decide how likely it is that an attribute will exist.
+
+Example of declaration:
+```
+## Frequency
+
+* **Never, Rarely, Occasionally, Sometimes, Often, Usually, Always** 0,1,2,3,4,5,6
+
+```
+
+Example of usage:
+```
+* **Diced onion** often ; *1,2,5*
+```
+
+### Models and references
+
+You can represent subject-predicate-object relationships in the models section.
+The subject is declared as a title while the predicate-objects are a list.
+
+
+Example:
+```
+## Models
+
+### Meat
+
+* **meat type** *pork,beef,chicken*
+* **sauce** usually; `sauce`
+
+```
+
+References are models that can be accessed by name.
+
+```
+## References
+
+* **secret** 2 of `Secret spice`
+```
+
+### Lists
+
+Fiction scripts rely often on lists to generate fictional data.
+You can create re-usable lists by declaring them in a list section.
+
+Lists can be loaded from files or from local web services.
+They can be stored as a JSON array or as a text with each row on a different line.
+The markdown syntax should be unaware of the exact location of the document.
+
+Example of list declaration:
+```
+## Lists
+
+* **male first name** `json-doc:male-first-name`
+```
+
+Example of use:
+```
+* **first name** `male first name`
+```
+
+### Mappings
+
+Mappings are used to create short aliases.
+They can be loaded from files or from local web services.
+
+The markdown syntax should be unaware of the exact location of the document.
+
+Example of mapping declaration:
+```
+## Mappings
+
+* **title** `json-doc:title`
+```
+
+Example of use:
+```
+* **sex** *female*; `title:dr`
+```
+
+For an internal representation of:
+```
+{
+	"dr": ["Doctor",{"fr": "Docteur"}]
+}
 ```
 
 

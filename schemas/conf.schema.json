@@ -10,7 +10,7 @@
       "id": "outputFormat",
       "type": "string",
       "minLength": 1,
-      "title": "The output format for the fiction command",
+      "title": "Output format",
       "description": "The output format should be either csv or json",
       "name": "outputFormat",
       "enum": [
@@ -21,7 +21,7 @@
     "curies": {
       "id": "curies",
       "type": "array",
-      "title": "The curies for the fiction command",
+      "title": "List of curies",
       "description": "The curies help to create a mapping between a real world url and a logic name",
       "name": "curies",
       "items": {
@@ -59,8 +59,8 @@
             "id": "contentType",
             "type": "string",
             "minLength": 1,
-            "title": "Content type returned by service",
-            "description": "Content type which should be provided by the web service",
+            "title": "Content type",
+            "description": "Content type returned by the web service",
             "name": "contentType",
             "enum": [
               "application/json",

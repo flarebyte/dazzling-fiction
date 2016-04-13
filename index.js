@@ -405,13 +405,13 @@ var mergeScripts = function(scripts) {
     var _scripts = _.chain(scripts);
     var r = {
         title: scripts[0].title,
-        imports: _scripts.pluck('imports').flatten().uniq().value(),
-        weighting: _scripts.pluck('weighting').reduceRight(mergeObjs).value(),
-        frequency: _scripts.pluck('frequency').reduceRight(mergeObjs).value(),
-        models: _scripts.pluck('models').reduceRight(mergeObjs).value(),
-        lists: _scripts.pluck('lists').reduceRight(mergeObjs).value(),
-        mappings: _scripts.pluck('mappings').reduceRight(mergeObjs).value(),
-        refs: _scripts.pluck('refs').reduceRight(mergeObjs).value()
+        imports: _scripts.map('imports').flatten().uniq().value(),
+        weighting: _scripts.map('weighting').reduceRight(mergeObjs).value(),
+        frequency: _scripts.map('frequency').reduceRight(mergeObjs).value(),
+        models: _scripts.map('models').reduceRight(mergeObjs).value(),
+        lists: _scripts.map('lists').reduceRight(mergeObjs).value(),
+        mappings: _scripts.map('mappings').reduceRight(mergeObjs).value(),
+        refs: _scripts.map('refs').reduceRight(mergeObjs).value()
     };
 
     return r;
@@ -682,7 +682,7 @@ var resolveMapping = function(_script, chance, ref) {
 };
 
 var retrieveLists = function(script) {
-    var cmdLists = _.pluck(_.filter(_.values(script.lists), 'command'), 'command');
+    var cmdLists = _.map(_.filter(_.values(script.lists), 'command'), 'command');
     if (_.isEmpty(cmdLists)) {
         return script;
     }
@@ -709,7 +709,7 @@ var retrieveLists = function(script) {
 };
 
 var retrieveMappings = function(script) {
-    var cmdMappings = _.pluck(_.filter(_.values(script.mappings), 'command'), 'command');
+    var cmdMappings = _.map(_.filter(_.values(script.mappings), 'command'), 'command');
     if (_.isEmpty(cmdMappings)) {
         return script;
     }
@@ -823,7 +823,7 @@ var produceQueryFacts = function(_script, chance, id, value) {
     var qty = luckyQuantity(_script, chance, value);
     var r = _.map(_.range(qty), resolveQueryStack);
 
-    return _.flatten(r, true);
+    return _.flattenDeep(r);
 
 };
 
@@ -861,7 +861,7 @@ var produceRefsFacts = function(_script, chance, runId) {
     };
     var r = _.map(refs, resolveRefStack);
 
-    return _.flatten(r, true);
+    return _.flattenDeep(r);
 
 };
 
@@ -879,7 +879,7 @@ var createChance = function(params, _script) {
             chars: "0-9a-z",
             integer: 0
         }],
-        weighting: _script.get('weighting').pairs().map(toChanceWeighting).value()
+        weighting: _script.get('weighting').toPairs().map(toChanceWeighting).value()
 
     };
     var chance = dazzlingChance(chanceConf);
@@ -909,7 +909,7 @@ var produceScriptFacts = function(_script, chance, runId) {
 
     };
     var scriptFacts = _script.get('models').map(modelFacts).value();
-    return _.flatten(scriptFacts, true);
+    return _.flattenDeep(scriptFacts);
 };
 
 var spiceScript = function(cfg, params, script) {
