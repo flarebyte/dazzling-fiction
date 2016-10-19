@@ -26,15 +26,16 @@
     "linked data"
   ],
   "dependencies": {
-    "bluebird": "^2.10.2",
+    "bluebird": "^2.11.0",
     "commander": "^2.9.0",
     "confiture": "^1.0.0",
     "dazzling-chance": "^0.1.0",
-    "fs-extra": "^0.26.7",
+    "fs-extra": "^0.30.0",
     "get-stdin": "^5.0.1",
+    "grunt-bump": "^0.8.0",
     "joi": "^6.10.1",
     "json-commander": "^1.0.0",
-    "lodash": "^4.11.0",
+    "lodash": "^4.16.4",
     "marked": "^0.3.5",
     "pkginfo": "^0.4.0",
     "request": "^2.71.0",
@@ -45,7 +46,6 @@
   "devDependencies": {
     "chai": "^3.2.0",
     "grunt": "^1.0.1",
-    "grunt-bump": "^0.7.0",
     "grunt-cli": "^1.2.0",
     "grunt-contrib-jshint": "^1.0.0",
     "grunt-contrib-nodeunit": "^1.0.0",

@@ -1,1 +1,5 @@
-["sebastian", "adrian", "james", "henry", "john"]
+{
+"name": "male-fist-name",
+"Description": "some description",
+"somne-data": ["sebastian", "adrian", "james", "henry", "john"]
+}

@@ -604,10 +604,15 @@ var webListLoaderAsync = function(v) {
 
     return isJson ? httpRequest.getAsync(reqConf).then(justBody) : httpRequest.getAsync(reqConf).then(justBody).then(stringToCSV);
 };
+
+var extractList = function(v) {
+  return _.isArray(v) ? v :_.flatMapDeep(_.pickBy(v, _.isArray));
+};
+
 var listLoaderAsync = function(v) {
     var hasHttp = S(v.path).startsWith('http://') || S(v.path).startsWith('https://');
     var loader = hasHttp ? webListLoaderAsync(v) : fileListLoaderAsync(v);
-    return loader.then(normalizeList);
+    return loader.then(extractList).then(normalizeList);
 };
 
 var mappingLoaderAsync = function(v) {
