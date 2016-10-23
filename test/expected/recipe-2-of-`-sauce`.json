@@ -202,6 +202,14 @@
     "p": "olive-oil",
     "o": [
       6.75,
+      "tablespoon"
+    ]
+  },
+  {
+    "s": "m-sauce-2-2",
+    "p": "pepper",
+    "o": [
+      1.778,
       "teaspoon"
     ]
   },
@@ -209,13 +217,8 @@
     "s": "m-sauce-2-2",
     "p": "diced-onion",
     "o": [
-      2
+      5
     ]
-  },
-  {
-    "s": "m-sauce-2-2",
-    "p": "spice:Garlic/wild",
-    "o": []
   },
   {
     "s": "m-sauce-2-2",
@@ -256,7 +259,7 @@
     "s": "ref-m-secret",
     "p": "ingredient",
     "o": [
-      "coriander"
+      "orange"
     ]
   }
 ]
