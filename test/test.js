@@ -407,5 +407,4 @@ describe('dazzling-fiction node module', function() {
         runRecipe(done, "m", "2 of `Secret spice`", false);
     });
 
-
 });

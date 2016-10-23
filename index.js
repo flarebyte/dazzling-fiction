@@ -495,7 +495,7 @@ var luckyFrequency = function(_script, chance, value) {
     return (luck <= freq);
 };
 
-var luckyInList = function(chance, value, ownerId, predicate) {
+var luckyInList = function(chance, value, ownerId, predicate, cmd) {
     var hasSingleItem = _.size(value.list) === 1;
     if (hasSingleItem) {
         return _.chain(value).get('list').first().value();
@@ -506,12 +506,12 @@ var luckyInList = function(chance, value, ownerId, predicate) {
         }
 
         var cloned = _.cloneDeep(value);
-        var cacheId = [ownerId, predicate].join('||');
-        var reducedList = _.get(chance, ['statefulLists', cacheId], value.list);
+        var cacheId = [predicate, cmd].join('||');
+        var reducedList = _.get(chance, ['statefulLists', cacheId], cloned.list);
         cloned.list = reducedList;
         var item = chance.next(cloned);
-        var listWithoutItem = _.pull(reducedList, item);
-        chance.statefulLists[cacheId] = _.isEmpty(listWithoutItem) ? value.list : listWithoutItem;
+        var listWithoutItem = _.without(reducedList, item);
+        chance.statefulLists[cacheId] = _.size(listWithoutItem) < 2 ? _.cloneDeep(value.list) : listWithoutItem;
         return item;
     }
 };
@@ -662,7 +662,8 @@ var resolveList = function(_script, chance, ref, ownerId, predicate) {
             throw new Error("List should have been cached");
 
         }
-        return luckyInList(chance, cached, ownerId, predicate);
+        var lil= luckyInList(chance, cached, ownerId, predicate, cmd);
+        return lil;
     }
 
     return luckyInList(chance, list.value(), ownerId, predicate);
@@ -805,7 +806,6 @@ var produceQueryFacts = function(_script, chance, id, value) {
     if (TYPE_REF !== getValueType(value)) {
         throw new Error("The query should contain a reference !");
     }
-
     var ref = _.get(value, 'value.ref');
     var stack = {
         refs: {},

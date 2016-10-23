@@ -33,34 +33,36 @@ cat LICENSE |  fict run '2 of `Vegetable`' recipe "test/fixtures"
 Will output:
 
 ```
-ingredient,child-of-fiction-model,secret-spice
-olive-oil,child-of-fiction-model,sauce
-pepper,child-of-fiction-model,sauce
-diced-onion,child-of-fiction-model,sauce
-spice:Garlic/wild,child-of-fiction-model,sauce
-spice:Garlic/black,child-of-fiction-model,sauce
-chilli,child-of-fiction-model,sauce
-secret,child-of-fiction-model,sauce
-spoon-of,child-of-fiction-model,sauce
-meat-type,child-of-fiction-model,meat
-sauce,child-of-fiction-model,meat
-vegetable-mix,child-of-fiction-model,vegetable
-sauce,child-of-fiction-model,vegetable
-topping,child-of-fiction-model,dessert
-starter,child-of-fiction-model,meal
-main-meat,child-of-fiction-model,meal
-main-vegetable,child-of-fiction-model,meal
-dessert,child-of-fiction-model,meal
-a-vegetable-1-1,vegetable-mix,turnip
-a-vegetable-1-1,vegetable-mix,turnip
-a-sauce-3-1,pepper,2,teaspoon
-a-sauce-3-1,diced-onion,2
-a-sauce-3-1,chilli,false
-a-sauce-3-1,secret,rel-ref-a-secret
-a-sauce-3-1,spoon-of,cognac
-a-sauce-3-1,spoon-of,armagnac
-a-vegetable-2-2,vegetable-mix,carrot
-a-vegetable-2-2,sauce,a-sauce-3-1
+"ingredient","child-of-fiction-model","secret-spice"
+"olive-oil","child-of-fiction-model","sauce"
+"pepper","child-of-fiction-model","sauce"
+"diced-onion","child-of-fiction-model","sauce"
+"spice:Garlic/wild","child-of-fiction-model","sauce"
+"spice:Garlic/black","child-of-fiction-model","sauce"
+"chilli","child-of-fiction-model","sauce"
+"secret","child-of-fiction-model","sauce"
+"spoon-of","child-of-fiction-model","sauce"
+"meat-type","child-of-fiction-model","meat"
+"sauce","child-of-fiction-model","meat"
+"vegetable-mix","child-of-fiction-model","vegetable"
+"sauce","child-of-fiction-model","vegetable"
+"topping","child-of-fiction-model","dessert"
+"starter","child-of-fiction-model","meal"
+"main-meat","child-of-fiction-model","meal"
+"main-vegetable","child-of-fiction-model","meal"
+"dessert","child-of-fiction-model","meal"
+"a-vegetable-1-1","vegetable-mix","turnip"
+"a-vegetable-1-1","vegetable-mix","potato"
+"a-sauce-3-1","pepper","2","teaspoon"
+"a-sauce-3-1","diced-onion","2"
+"a-sauce-3-1","chilli","false"
+"a-sauce-3-1","secret","ref-a-secret"
+"a-sauce-3-1","spoon-of","cognac"
+"a-sauce-3-1","spoon-of","armagnac"
+"a-vegetable-2-2","vegetable-mix","carrot"
+"a-vegetable-2-2","sauce","a-sauce-3-1"
+"ref-a-secret","ingredient","lemon"
+"ref-a-secret","ingredient","orange"
 ```
 
 ### Generate JSON
@@ -75,88 +77,58 @@ Concerning the optional parameter -p or --print:
 Will output
 
 ```
-[ { i: 'a-ingredient-4',
-    s: 'ingredient',
-    p: 'child-of-fiction-model',
-    o: [ 'secret-spice' ] },
-  { i: 'a-olive-oil-5',
-    s: 'olive-oil',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-pepper-6',
-    s: 'pepper',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-diced-onion-7',
-    s: 'diced-onion',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-spice:Garlic/wild-8',
-    s: 'spice:Garlic/wild',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-spice:Garlic/black-9',
-    s: 'spice:Garlic/black',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-chilli-10',
-    s: 'chilli',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-secret-11',
-    s: 'secret',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-spoon-of-12',
-    s: 'spoon-of',
-    p: 'child-of-fiction-model',
-    o: [ 'sauce' ] },
-  { i: 'a-meat-type-13',
-    s: 'meat-type',
-    p: 'child-of-fiction-model',
-    o: [ 'meat' ] },
-  { i: 'a-sauce-14',
-    s: 'sauce',
-    p: 'child-of-fiction-model',
-    o: [ 'meat' ] },
-  { i: 'a-vegetable-mix-15',
-    s: 'vegetable-mix',
-    p: 'child-of-fiction-model',
-    o: [ 'vegetable' ] },
-  { i: 'a-sauce-16',
-    s: 'sauce',
-    p: 'child-of-fiction-model',
-    o: [ 'vegetable' ] },
-  { i: 'a-topping-17',
-    s: 'topping',
-    p: 'child-of-fiction-model',
-    o: [ 'dessert' ] },
-  { i: 'a-starter-18',
-    s: 'starter',
-    p: 'child-of-fiction-model',
-    o: [ 'meal' ] },
-  { i: 'a-main-meat-19',
-    s: 'main-meat',
-    p: 'child-of-fiction-model',
-    o: [ 'meal' ] },
-  { i: 'a-main-vegetable-20',
-    s: 'main-vegetable',
-    p: 'child-of-fiction-model',
-    o: [ 'meal' ] },
-  { i: 'a-dessert-21',
-    s: 'dessert',
-    p: 'child-of-fiction-model',
-    o: [ 'meal' ] },
-  { s: 'a-vegetable-1-1', p: 'vegetable-mix', o: [ 'turnip' ] },
-  { s: 'a-vegetable-1-1', p: 'vegetable-mix', o: [ 'turnip' ] },
-  { s: 'a-sauce-3-1', p: 'pepper', o: [ 2, 'teaspoon' ] },
-  { s: 'a-sauce-3-1', p: 'diced-onion', o: [ 2 ] },
-  { s: 'a-sauce-3-1', p: 'chilli', o: [ false ] },
-  { s: 'a-sauce-3-1', p: 'secret', o: [ 'rel-ref-a-secret' ] },
-  { s: 'a-sauce-3-1', p: 'spoon-of', o: [ 'cognac' ] },
-  { s: 'a-sauce-3-1', p: 'spoon-of', o: [ 'armagnac' ] },
-  { s: 'a-vegetable-2-2', p: 'vegetable-mix', o: [ 'carrot' ] },
-  { s: 'a-vegetable-2-2', p: 'sauce', o: [ 'a-sauce-3-1' ] } ]
+[
+ {"i": "a-ingredient-4",
+  "s": "ingredient",
+  "p": "child-of-fiction-model",
+  "o": [
+   "secret-spice"
+  ]
+ },
+ {
+  "i": "a-olive-oil-5",
+  "s": "olive-oil",
+  "p": "child-of-fiction-model",
+  "o": [
+   "sauce"
+  ]
+ },
+ {
+  "i": "a-pepper-6",
+  "s": "pepper",
+  "p": "child-of-fiction-model",
+  "o": [
+   "sauce"
+  ]
+ },
+{"i":"a-diced-onion-7","s":"diced-onion","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-spice:Garlic/wild-8","s":"spice:Garlic/wild","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-spice:Garlic/black-9","s":"spice:Garlic/black","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-chilli-10","s":"chilli","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-secret-11","s":"secret","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-spoon-of-12","s":"spoon-of","p":"child-of-fiction-model","o":["sauce"]},
+{"i":"a-meat-type-13","s":"meat-type","p":"child-of-fiction-model","o":["meat"]},
+{"i":"a-sauce-14","s":"sauce","p":"child-of-fiction-model","o":["meat"]},
+{"i":"a-vegetable-mix-15","s":"vegetable-mix","p":"child-of-fiction-model","o":["vegetable"]},
+{"i":"a-sauce-16","s":"sauce","p":"child-of-fiction-model","o":["vegetable"]},
+{"i":"a-topping-17","s":"topping","p":"child-of-fiction-model","o":["dessert"]},
+{"i":"a-starter-18","s":"starter","p":"child-of-fiction-model","o":["meal"]},
+{"i":"a-main-meat-19","s":"main-meat","p":"child-of-fiction-model","o":["meal"]},
+{"i":"a-main-vegetable-20","s":"main-vegetable","p":"child-of-fiction-model","o":["meal"]},
+{"i":"a-dessert-21","s":"dessert","p":"child-of-fiction-model","o":["meal"]},
+{"s":"a-vegetable-1-1","p":"vegetable-mix","o":["turnip"]},
+{"s":"a-vegetable-1-1","p":"vegetable-mix","o":["potato"]},
+{"s":"a-sauce-3-1","p":"pepper","o":[2,"teaspoon"]},
+{"s":"a-sauce-3-1","p":"diced-onion","o":[2]},
+{"s":"a-sauce-3-1","p":"chilli","o":[false]},
+{"s":"a-sauce-3-1","p":"secret","o":["ref-a-secret"]},
+{"s":"a-sauce-3-1","p":"spoon-of","o":["cognac"]},
+{"s":"a-sauce-3-1","p":"spoon-of","o":["armagnac"]},
+{"s":"a-vegetable-2-2","p":"vegetable-mix","o":["carrot"]},
+{"s":"a-vegetable-2-2","p":"sauce","o":["a-sauce-3-1"]},
+{"s":"ref-a-secret","p":"ingredient","o":["lemon"]},
+{"s":"ref-a-secret","p":"ingredient","o":["orange"]}
+]
 ```
 
 ## Features of the fiction dialect
@@ -242,6 +214,7 @@ You can create re-usable lists by declaring them in a list section.
 
 Lists can be loaded from files or from local web services.
 They can be stored as a JSON array or as a text with each row on a different line.
+Alternatively, the format mostly used by [corpora](https://github.com/dariusk/corpora) is also supported (see male-first-name.json).
 The markdown syntax should be unaware of the exact location of the document.
 
 Example of list declaration:
